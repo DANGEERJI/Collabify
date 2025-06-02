@@ -22,9 +22,6 @@
                   └── route.ts
                └── profile
                   └── route.ts
-      └── auth
-        └──  signin
-            └── page.tsx
       └── oboarding
          └── OnboardingForm.tsx
          └── page.tsx
