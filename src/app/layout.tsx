@@ -1,14 +1,24 @@
 // src/app/layout.tsx
-'use client';
-
+import { Inter } from 'next/font/google'
 import './globals.css'
-import { SessionProvider } from 'next-auth/react'
+import { Providers } from './providers'
 
-export default function RootLayout({ children,}: { children: React.ReactNode }) {
+const inter = Inter({ subsets: ['latin'] })
+
+export const metadata = {
+  title: 'Collabify - Student Collaboration Platform',
+  description: 'Connect with students across universities for projects and collaboration',
+}
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   return (
     <html lang="en">
-      <body>
-        <SessionProvider>{children}</SessionProvider>
+      <body className={inter.className}>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )

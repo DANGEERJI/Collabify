@@ -1,0 +1,78 @@
+
+/.next         #filled with files
+
+/node_modules    #filled with files
+
+/primsa
+   └── migrations    #filled with files
+   └── schema.primsa
+
+/public    #filled with files
+
+/src
+   └── app
+      └── api
+            └── auth
+               └── [...nextauth]   # Custom NextAuth route
+                  └── route.ts
+            └── user
+               └── check-username
+                  └── route.ts
+               └── onboarding
+                  └── route.ts
+               └── profile
+                  └── route.ts
+      └── auth
+        └──  signin
+            └── page.tsx
+      └── oboarding
+         └── OnboardingForm.tsx
+         └── page.tsx
+      └── dashboard 
+         └── DashboardContent.tsx
+         └── page.tsx
+      └── globals.css
+      └── layout.tsx
+      └── page.tsx
+      └── providers.tsx
+
+   └── components         # Reusable React components
+
+   └── config
+
+   └── context
+
+   └── generated
+      └── prisma          #filled with files
+
+   └── hooks
+
+   └── lib
+         └── auth.ts
+         └── prisma.ts
+
+   └── styles
+
+   └── types
+         └── next-auth.d.ts
+
+   └── utils
+
+/.env
+
+/gitignore
+
+/next-env.d.ts
+
+/next.config.ts
+
+/package-lock.json
+
+/package.json
+
+/postcss.config.mjs
+
+/README.md
+
+/tsconfig.json
+
