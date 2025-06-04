@@ -1,5 +1,4 @@
 //src/app/page.tsx
-
 'use client';
 
 import { useEffect, useState } from "react";
@@ -11,17 +10,27 @@ export default function Home() {
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
   const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const [isClient, setIsClient] = useState(false);
+
+  // Fix hydration by ensuring client-side only rendering
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   useEffect(() => {
+    if (!isClient) return; // Prevent running on server
+    
     const handleMouseMove = (e: MouseEvent) => {
       setMousePosition({ x: e.clientX, y: e.clientY });
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
+  }, [isClient]);
 
   useEffect(() => {
+    if (!isClient) return; // Prevent running on server
+    
     const checkUserStatus = async () => {
       if (status === "authenticated" && session?.user?.email) {
         try {
@@ -48,25 +57,30 @@ export default function Home() {
     if (status !== "loading") {
       checkUserStatus();
     }
-  }, [session, status, router]);
+  }, [session, status, router, isClient]);
 
-  if (status === "loading" || (status === "authenticated" && isChecking)) {
+  // Show loading or simplified version during hydration
+  if (!isClient || status === "loading" || (status === "authenticated" && isChecking)) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-        {/* Animated background particles */}
-        <div className="absolute inset-0">
-          {[...Array(50)].map((_, i) => (
+        {/* TEST: Super visible particles */}
+        <div className="absolute inset-0 pointer-events-none">
+          {Array.from({ length: 10 }, (_, i) => (
             <div
               key={i}
-              className="absolute w-1 h-1 bg-white rounded-full opacity-20 animate-pulse"
+              className="absolute bg-red-500 rounded-full animate-bounce"
               style={{
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                animationDuration: `${2 + Math.random() * 2}s`
+                left: `${10 + i * 8}%`,
+                top: `${10 + i * 8}%`,
+                width: '20px',
+                height: '20px',
+                animationDelay: `${i * 0.2}s`
               }}
             />
           ))}
+          <div className="absolute top-4 left-4 text-white bg-red-500 px-2 py-1 text-sm rounded">
+            PARTICLES TEST - You should see red bouncing dots
+          </div>
         </div>
         <div className="text-center z-10">
           <div className="relative">
@@ -99,34 +113,42 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 relative overflow-hidden">
-      {/* Animated gradient orbs */}
-      <div 
-        className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse"
-        style={{
-          transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
-        }}
-      />
-      <div 
-        className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse"
-        style={{
-          transform: `translate(${-mousePosition.x * 0.02}px, ${-mousePosition.y * 0.02}px)`
-        }}
-      />
+      {/* Animated gradient orbs - only render on client */}
+      {isClient && (
+        <>
+          <div 
+            className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/30 rounded-full blur-3xl animate-pulse"
+            style={{
+              transform: `translate(${mousePosition.x * 0.02}px, ${mousePosition.y * 0.02}px)`
+            }}
+          />
+          <div 
+            className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/30 rounded-full blur-3xl animate-pulse"
+            style={{
+              transform: `translate(${-mousePosition.x * 0.02}px, ${-mousePosition.y * 0.02}px)`
+            }}
+          />
+        </>
+      )}
       
-      {/* Floating particles */}
-      <div className="absolute inset-0">
-        {[...Array(100)].map((_, i) => (
+      {/* TEST: Super visible particles */}
+      <div className="absolute inset-0 pointer-events-none">
+        {Array.from({ length: 15 }, (_, i) => (
           <div
             key={i}
-            className="absolute w-1 h-1 bg-white rounded-full opacity-10 animate-pulse"
+            className="absolute bg-yellow-400 rounded-full animate-pulse"
             style={{
-              left: `${Math.random() * 100}%`,
-              top: `${Math.random() * 100}%`,
-              animationDelay: `${Math.random() * 3}s`,
-              animationDuration: `${3 + Math.random() * 3}s`
+              left: `${5 + i * 6}%`,
+              top: `${20 + (i * 5) % 60}%`,
+              width: '16px',
+              height: '16px',
+              animationDelay: `${i * 0.3}s`
             }}
           />
         ))}
+        <div className="absolute top-8 right-4 text-black bg-yellow-400 px-2 py-1 text-sm rounded font-bold">
+          MAIN PARTICLES TEST - Yellow dots
+        </div>
       </div>
 
       {/* Hero Section */}
