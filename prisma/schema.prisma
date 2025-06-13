@@ -30,9 +30,9 @@ model User {
   portfolioUrl   String?
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
-
   accounts       Account[]
   sessions       Session[]
+  projects       Project[]
 }
 
 model Account {
@@ -48,9 +48,7 @@ model Account {
   scope              String?
   id_token           String?  @db.Text
   session_state      String?
-
   user User @relation(fields: [userId], references: [id])
-
   @@unique([provider, providerAccountId])
 }
 
@@ -59,7 +57,6 @@ model Session {
   sessionToken String   @unique
   userId       String
   expires      DateTime
-
   user User @relation(fields: [userId], references: [id])
 }
 
@@ -67,6 +64,24 @@ model VerificationToken {
   identifier String
   token      String   @unique
   expires    DateTime
-
   @@unique([identifier, token])
+}
+
+model Project {
+  id              String    @id @default(cuid())
+  title           String
+  description     String    @db.Text
+  techStack       String[]  // Array of tech stack items
+  tags            String[]  // Interest areas/categories
+  githubUrl       String?
+  estimatedTeamSize Int?
+  status          String    @default("active") // New status field
+  createdBy       String
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relation to User
+  creator         User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  
+  @@map("projects")
 }

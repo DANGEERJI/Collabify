@@ -15,6 +15,12 @@
             └── auth
                └── [...nextauth]   # Custom NextAuth route
                   └── route.ts
+            └── projects
+               └── my-projects  #fetch each users particular projects
+                  └── route.ts
+               └── update-status #to update status of the projects
+                  └── route.ts  
+               └── route.ts # general route for project form
             └── user
                └── check-username
                   └── route.ts
@@ -22,11 +28,14 @@
                   └── route.ts
                └── profile
                   └── route.ts
-      └── oboarding
-         └── OnboardingForm.tsx
+      └── create-project
+         └── CreateProjectForm.tsx
          └── page.tsx
       └── dashboard 
          └── DashboardContent.tsx
+         └── page.tsx
+      └── oboarding
+         └── OnboardingForm.tsx
          └── page.tsx
       └── globals.css
       └── layout.tsx
