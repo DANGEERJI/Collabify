@@ -1,25 +1,23 @@
 // src/app/project/[id]/page.tsx
+import { notFound } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { notFound, redirect } from "next/navigation";
+import { sessionUserToUser, type SessionUser } from "@/types";
 import ProjectDetailContent from "./ProjectDetailContent";
 
 interface ProjectPageProps {
-   params: {
-      id: string;
-   };
+   params: Promise<{ id: string }>;
 }
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
-   const session = await getServerSession(authOptions);
+   // Await the params object
+   const { id } = await params;
    
-   if (!session?.user || !session.user.email) {
-      redirect("/api/auth/signin");
-   }
+   const session = await getServerSession(authOptions);
 
    const project = await prisma.project.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
          creator: {
          select: {
@@ -32,40 +30,23 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             skills: true,
             githubUrl: true,
             linkedinUrl: true,
-         }
-         }
-      }
+         },
+         },
+      },
    });
 
    if (!project) {
       notFound();
    }
 
-   const currentUser = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: {
-         id: true,
-         name: true,
-         email: true,
-         image: true,
-         username: true,
-         skills: true,
-      }
-   });
-
-   if (!currentUser) {
-      redirect("/onboarding");
-   }
-
-   const isOwner = project.createdBy === currentUser.id;
+   const currentUser = session?.user ? sessionUserToUser(session.user as SessionUser) : null;
+   const isOwner = currentUser?.id === project.creator.id;
 
    return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-         <ProjectDetailContent 
-         project={project} 
-         currentUser={currentUser} 
+      <ProjectDetailContent
+         project={project}
+         currentUser={currentUser}
          isOwner={isOwner}
-         />
-      </div>
+      />
    );
 }

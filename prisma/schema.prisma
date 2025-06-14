@@ -16,23 +16,28 @@ datasource db {
 }
 
 model User {
-  id             String    @id @default(cuid())
-  name           String?
-  email          String?   @unique
-  emailVerified  DateTime?
-  image          String?
-  username       String?   @unique
-  bio            String?
-  skills         String[]  // ✅ PostgreSQL supports arrays
-  interests      String[]
-  githubUrl      String?
-  linkedinUrl    String?
-  portfolioUrl   String?
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-  accounts       Account[]
-  sessions       Session[]
-  projects       Project[]
+  id                String              @id @default(cuid())
+  name              String?
+  email             String?             @unique
+  emailVerified     DateTime?
+  image             String?
+  username          String?             @unique
+  bio               String?
+  skills            String[]            // ✅ PostgreSQL supports arrays
+  interests         String[]
+  githubUrl         String?
+  linkedinUrl       String?
+  portfolioUrl      String?
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  accounts          Account[]
+  sessions          Session[]
+  projects          Project[]
+  projectInterests  ProjectInterest[]   // New relation
+  teamMembers       TeamMember[]        // New relation
+  discussions       Discussion[]        // Added missing relation
+  comments          Comment[]           // Added missing relation
+  uploadedResources ProjectResource[]   // Added missing relation
 }
 
 model Account {
@@ -67,21 +72,117 @@ model VerificationToken {
   @@unique([identifier, token])
 }
 
+
 model Project {
-  id              String    @id @default(cuid())
-  title           String
-  description     String    @db.Text
-  techStack       String[]  // Array of tech stack items
-  tags            String[]  // Interest areas/categories
-  githubUrl       String?
+  id                String              @id @default(cuid())
+  title             String
+  description       String              @db.Text
+  techStack         String[]            // Array of tech stack items
+  tags              String[]            // Interest areas/categories
+  githubUrl         String?
   estimatedTeamSize Int?
-  status          String    @default("active") // New status field
-  createdBy       String
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  status            String              @default("active") // active, completed, on-hold, cancelled
+  goals             String?             @db.Text // New field for detailed goals
+  requirements      String?             @db.Text // New field for requirements
+  createdBy         String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
   
-  // Relation to User
-  creator         User      @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  // Relations
+  creator           User                @relation(fields: [createdBy], references: [id], onDelete: Cascade)
+  interests         ProjectInterest[]   // New relation
+  teamMembers       TeamMember[]        // New relation
+  discussions       Discussion[]        // New relation
+  resources         ProjectResource[]   // New relation
   
   @@map("projects")
+}
+
+// New model for project interest/applications
+model ProjectInterest {
+  id          String   @id @default(cuid())
+  projectId   String
+  userId      String
+  message     String   @db.Text
+  status      String   @default("pending") // pending, accepted, rejected
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Prevent duplicate interests from same user for same project
+  @@unique([projectId, userId])
+  @@map("project_interests")
+}
+
+// New model for team members
+model TeamMember {
+  id        String   @id @default(cuid())
+  projectId String
+  userId    String
+  role      String   @default("member") // owner, admin, member
+  joinedAt  DateTime @default(now())
+  
+  // Relations
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Prevent duplicate memberships
+  @@unique([projectId, userId])
+  @@map("team_members")
+}
+
+// New model for project discussions
+model Discussion {
+  id          String    @id @default(cuid())
+  projectId   String
+  authorId    String
+  title       String
+  content     String    @db.Text
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relations
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments    Comment[]
+  
+  @@map("discussions")
+}
+
+// New model for discussion comments
+model Comment {
+  id           String     @id @default(cuid())
+  discussionId String
+  authorId     String
+  content      String     @db.Text
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  
+  // Relations
+  discussion   Discussion @relation(fields: [discussionId], references: [id], onDelete: Cascade)
+  author       User       @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  
+  @@map("comments")
+}
+
+// New model for project resources
+model ProjectResource {
+  id          String   @id @default(cuid())
+  projectId   String
+  uploadedBy  String
+  title       String
+  description String?
+  fileUrl     String?
+  linkUrl     String?
+  type        String   // file, link, document
+  createdAt   DateTime @default(now())
+  
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  uploader    User     @relation(fields: [uploadedBy], references: [id], onDelete: Cascade)
+  
+  @@map("project_resources")
 }

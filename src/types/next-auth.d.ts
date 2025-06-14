@@ -10,12 +10,20 @@ declare module "next-auth" {
          email?: string | null;
          image?: string | null;
          username?: string | null;
+         bio?: string | null;
+         skills?: string[];
+         githubUrl?: string | null;
+         linkedinUrl?: string | null;
       };
    }
-
+   
    interface User {
       id: string;
       username?: string | null;
+      bio?: string | null;
+      skills?: string[];
+      githubUrl?: string | null;
+      linkedinUrl?: string | null;
    }
 }
 
@@ -23,6 +31,10 @@ declare module "next-auth/jwt" {
    interface JWT {
       id?: string;
       username?: string | null;
+      bio?: string | null;
+      skills?: string[];
+      githubUrl?: string | null;
+      linkedinUrl?: string | null;
    }
 }
 
@@ -33,20 +45,23 @@ declare module "next-auth/jwt" {
 // declare module "next-auth" {
 //    interface Session {
 //       user: {
-//          id: string; // Add `id` to the user type
-//          username?: string | null;
+//          id: string;
 //          name?: string | null;
 //          email?: string | null;
 //          image?: string | null;
+//          username?: string | null;
 //       };
 //    }
 
 //    interface User {
+//       id: string;
 //       username?: string | null;
-//       id: string; // Ensure User has an id (usually does)
 //    }
+// }
 
+// declare module "next-auth/jwt" {
 //    interface JWT {
 //       id?: string;
+//       username?: string | null;
 //    }
 // }
