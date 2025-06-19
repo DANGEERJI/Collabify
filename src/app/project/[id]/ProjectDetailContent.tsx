@@ -3,494 +3,1100 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
 import { format } from "date-fns";
-import { type User, type Project } from "@/types";
+import {Header} from "@/components/layout/AppHeader";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+
+// Enhanced type definitions
+interface User {
+  id: string;
+  name: string | null;
+  email: string | null;
+  username: string | null;
+  image: string | null;
+  bio: string | null;
+  skills: string[];
+  interests: string[];
+  createdAt: Date;
+  githubUrl: string | null;
+  linkedinUrl: string | null;
+  portfolioUrl: string | null;
+}
+
+interface ProjectInterest {
+  id: string;
+  userId: string;
+  message: string;
+  status: "pending" | "accepted" | "rejected";
+  createdAt: Date;
+  user: User;
+}
+
+interface TeamMember {
+  id: string;
+  userId: string;
+  role: "owner" | "admin" | "member";
+  joinedAt: Date;
+  user: User;
+}
+
+interface Project {
+  id: string;
+  title: string;
+  description: string;
+  techStack: string[];
+  tags: string[];
+  githubUrl: string | null;
+  estimatedTeamSize: number | null;
+  status: "active" | "completed" | "on-hold" | "cancelled";
+  goals: string | null;
+  requirements: string | null;
+  createdBy: string;
+  createdAt: Date;
+  updatedAt: Date;
+  creator: User;
+  interests?: ProjectInterest[];
+  teamMembers?: TeamMember[];
+}
 
 interface ProjectDetailContentProps {
-   project: Project;
-   currentUser: User | null;
-   isOwner: boolean;
+  project: Project;
+  currentUser: User | null;
+  isOwner: boolean;
 }
 
 export default function ProjectDetailContent({ 
-   project, 
-   currentUser, 
-   isOwner 
+  project, 
+  currentUser, 
+  isOwner 
 }: ProjectDetailContentProps) {
-   const [activeTab, setActiveTab] = useState("overview");
-   const [showInterestModal, setShowInterestModal] = useState(false);
-   const [interestMessage, setInterestMessage] = useState("");
-   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
-   const [imageError, setImageError] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("overview");
+  const [showInterestModal, setShowInterestModal] = useState(false);
+  const [interestMessage, setInterestMessage] = useState("");
+  const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
+  const [currentStatus, setCurrentStatus] = useState(project.status);
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
 
-   const handleExpressInterest = async () => {
-      setIsSubmittingInterest(true);
-      try {
-         const response = await fetch(`/api/projects/interest`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-               projectId: project.id,
-               message: interestMessage
-            })
-         });
+  const statusOptions = [
+    { value: "active", label: "Active", color: "bg-green-100 text-green-800" },
+    { value: "on-hold", label: "On Hold", color: "bg-yellow-100 text-yellow-800" },
+    { value: "completed", label: "Completed", color: "bg-blue-100 text-blue-800" },
+    { value: "cancelled", label: "Cancelled", color: "bg-red-100 text-red-800" }
+  ];
 
-         if (response.ok) {
-            setShowInterestModal(false);
-            setInterestMessage("");
-            window.location.reload();
-         }
-      } catch (error) {
-         console.error("Error expressing interest:", error);
-      } finally {
-         setIsSubmittingInterest(false);
+  // Check if current user has already expressed interest
+  const hasExpressedInterest = project.interests?.some(
+    interest => interest.userId === currentUser?.id
+  );
+
+  // Get pending interests for owner
+  const pendingInterests = project.interests?.filter(
+    interest => interest.status === "pending"
+  ) || [];
+
+  // Get accepted team members (excluding creator)
+  const acceptedMembers = project.teamMembers?.filter(
+    member => member.userId !== project.createdBy
+  ) || [];
+
+  const handleExpressInterest = async () => {
+    if (!currentUser) return;
+    
+    setIsSubmittingInterest(true);
+    try {
+      const response = await fetch(`/api/projects/interest`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          projectId: project.id,
+          message: interestMessage
+        })
+      });
+
+      if (response.ok) {
+        setShowInterestModal(false);
+        setInterestMessage("");
+        window.location.reload();
       }
-   };
+    } catch (error) {
+      console.error("Error expressing interest:", error);
+    } finally {
+      setIsSubmittingInterest(false);
+    }
+  };
 
-   const getStatusColor = (status: string) => {
-      switch (status.toLowerCase()) {
-         case "active": return "bg-green-100 text-green-800";
-         case "completed": return "bg-blue-100 text-blue-800";
-         case "on-hold": return "bg-yellow-100 text-yellow-800";
-         case "cancelled": return "bg-red-100 text-red-800";
-         default: return "bg-gray-100 text-gray-800";
+  const handleStatusChange = async (newStatus: string) => {
+    if (newStatus === currentStatus) return;
+    
+    setIsUpdatingStatus(true);
+    try {
+      const response = await fetch(`/api/projects/${project.id}/status`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        setCurrentStatus(newStatus as "active" | "completed" | "on-hold" | "cancelled");
       }
-   };
+    } catch (error) {
+      console.error("Error updating status:", error);
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
-   const formatDate = (date: Date) => {
-      return format(new Date(date), "MMM d, yyyy");
-   };
+  const getStatusColor = (status: string) => {
+    const statusOption = statusOptions.find(s => s.value === status);
+    return statusOption?.color || "bg-gray-100 text-gray-800";
+  };
 
-   return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-         {/* Header */}
-         <header className="bg-white shadow-sm border-b border-gray-200">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-               <div className="flex justify-between items-center h-16">
-                  <div className="flex items-center space-x-4">
-                     <Link href="/dashboard" className="flex items-center space-x-3 hover:opacity-80 transition-opacity">
-                        <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-full flex items-center justify-center">
-                           <span className="text-white font-bold text-lg">C</span>
+  const formatDate = (date: Date) => {
+    return format(new Date(date), "MMM d, yyyy");
+  };
+
+  // const UserAvatar = ({ user, size = "md" }: { user: User; size?: "sm" | "md" | "lg" }) => {
+  //   const sizeClasses = {
+  //     sm: "w-8 h-8 text-sm",
+  //     md: "w-12 h-12 text-base",
+  //     lg: "w-16 h-16 text-xl"
+  //   };
+
+  //   return (
+  //     <div className={`${sizeClasses[size]} bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center overflow-hidden shadow-lg`}>
+  //       {user.image ? (
+  //         <Image
+  //           src={user.image}
+  //           alt={user.name || "User"}
+  //           width={size === "sm" ? 32 : size === "md" ? 48 : 64}
+  //           height={size === "sm" ? 32 : size === "md" ? 48 : 64}
+  //           className="rounded-full object-cover"
+  //         />
+  //       ) : (
+  //         <span className="text-white font-semibold">
+  //           {user.name?.charAt(0) || "U"}
+  //         </span>
+  //       )}
+  //     </div>
+  //   );
+  // };
+
+  // Handle interest actions (accept/reject)
+  async function handleInterestAction(interestId: string, action: "accepted" | "rejected") {
+    try {
+      const response = await fetch(`/api/projects/interest/${interestId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: action })
+      });
+
+      if (response.ok) {
+        window.location.reload();
+      }
+    } catch (error) {
+      console.error("Error updating interest:", error);
+    }
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+      {/* Header */}
+      <Header
+        isDashBoard={false}
+        user={currentUser}
+      />
+
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Project Header */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
+          <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
+            <div className="flex-1">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
+                <h1 className="text-4xl font-bold text-gray-900">{project.title}</h1>
+                
+                {/* Enhanced Status Display */}
+                <div className="flex items-center gap-3">
+                  {isOwner ? (
+                    <div className="relative">
+                      <select
+                        value={currentStatus}
+                        onChange={(e) => handleStatusChange(e.target.value)}
+                        disabled={isUpdatingStatus}
+                        className={`px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent focus:border-blue-500 focus:outline-none cursor-pointer transition-all ${getStatusColor(currentStatus)} ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 hover:scale-105'}`}
+                      >
+                        {statusOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                      {isUpdatingStatus && (
+                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
+                          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
                         </div>
-                        <h1 className="text-2xl font-bold text-gray-900">Collabify</h1>
-                     </Link>
-                     <span className="text-gray-300">|</span>
-                     <Link href="/dashboard" className="text-gray-600 hover:text-gray-900 transition-colors">
-                        Dashboard
-                     </Link>
+                      )}
+                    </div>
+                  ) : (
+                    <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(currentStatus)} whitespace-nowrap`}>
+                      {statusOptions.find(s => s.value === currentStatus)?.label || currentStatus}
+                    </span>
+                  )}
+                  
+                  {/* Quick Status Update Buttons for Owner */}
+                  {isOwner && (
+                    <div className="hidden lg:flex items-center gap-2">
+                      <span className="text-xs text-gray-500">Quick:</span>
+                      {statusOptions.filter(opt => opt.value !== currentStatus).slice(0, 2).map((option) => (
+                        <button
+                          key={option.value}
+                          onClick={() => handleStatusChange(option.value)}
+                          disabled={isUpdatingStatus}
+                          className={`px-3 py-1 rounded-full text-xs font-medium border-2 border-gray-300 hover:border-blue-400 transition-all ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
+                        >
+                          {option.label}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              
+              <p className="text-gray-600 text-lg mb-8 leading-relaxed">
+                {project.description}
+              </p>
+
+              {/* Tech Stack */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="mr-2">⚡</span>
+                  Tech Stack
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {project.techStack.map((tech, index) => (
+                    <span 
+                      key={index}
+                      className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors"
+                    >
+                      {tech}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Categories */}
+              <div className="mb-8">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
+                  <span className="mr-2">🏷️</span>
+                  Categories
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {project.tags.map((tag, index) => (
+                    <span 
+                      key={index}
+                      className="bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Project Info Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <span className="text-lg mr-2">👥</span>
+                    <span className="text-sm font-medium text-gray-600">Team Size</span>
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {project.estimatedTeamSize ? `${project.estimatedTeamSize} members` : "Flexible"}
+                  </span>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <span className="text-lg mr-2">📅</span>
+                    <span className="text-sm font-medium text-gray-600">Created</span>
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {formatDate(project.createdAt)}
+                  </span>
+                </div>
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <div className="flex items-center mb-2">
+                    <span className="text-lg mr-2">🔄</span>
+                    <span className="text-sm font-medium text-gray-600">Updated</span>
+                  </div>
+                  <span className="text-lg font-semibold text-gray-900">
+                    {formatDate(project.updatedAt)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col gap-3 lg:min-w-[200px]">
+              {!isOwner && currentUser && !hasExpressedInterest && (
+                <button
+                  onClick={() => setShowInterestModal(true)}
+                  className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105"
+                >
+                  <span className="mr-2">✨</span>
+                  Express Interest
+                </button>
+              )}
+
+              {!isOwner && hasExpressedInterest && (
+                <div className="bg-green-100 text-green-800 px-6 py-3 rounded-lg font-medium text-center">
+                  <span className="mr-2">✅</span>
+                  Interest Expressed
+                </div>
+              )}
+              
+              {project.githubUrl && (
+                <a
+                  href={project.githubUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105"
+                >
+                  <span className="mr-2">🔗</span>
+                  View on GitHub
+                </a>
+              )}
+
+              {isOwner && (
+                <>
+                  <Link
+                    href={`/project/${project.id}/edit`}
+                    className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105"
+                  >
+                    <span className="mr-2">✏️</span>
+                    Edit Project
+                  </Link>
+                  <Link
+                    href={`/project/${project.id}/manage`}
+                    className="bg-gradient-to-r from-purple-600 to-purple-700 text-white px-6 py-3 rounded-lg hover:from-purple-700 hover:to-purple-800 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105"
+                  >
+                    <span className="mr-2">⚙️</span>
+                    Manage Team
+                  </Link>
+                  {pendingInterests.length > 0 && (
+                    <Link
+                      href={`/project/${project.id}/interests`}
+                      className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105 relative"
+                    >
+                      <span className="mr-2">📧</span>
+                      View Applications
+                      <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
+                        {pendingInterests.length}
+                      </span>
+                    </Link>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Pending Applications Alert for Owner */}
+        {isOwner && pendingInterests.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-8">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center">
+                <span className="text-2xl mr-3">📧</span>
+                <div>
+                  <h3 className="text-lg font-semibold text-amber-800">
+                    New Applications Pending Review
+                  </h3>
+                  <p className="text-amber-700">
+                    {pendingInterests.length} {pendingInterests.length === 1 ? 'person has' : 'people have'} expressed interest in joining your project.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href={`/project/${project.id}/interests`}
+                className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+              >
+                Review Applications
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation Tabs */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
+          <div className="border-b border-gray-200">
+            <nav className="flex space-x-8 px-6">
+              {[
+                { id: "overview", label: "Overview", icon: "📋" },
+                { id: "team", label: "Team", icon: "👥" },
+                { id: "applicants", label: "Applicants", icon: "✋", ownerOnly: true, count: pendingInterests.length },
+                { id: "discussions", label: "Discussions", icon: "💬" },
+                { id: "resources", label: "Resources", icon: "📚" },
+                { id: "activity", label: "Activity", icon: "⚡" },
+              ].filter(tab => !tab.ownerOnly || isOwner).map((tab) => (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`py-4 px-2 border-b-2 font-medium text-sm transition-all duration-200 relative ${
+                    activeTab === tab.id
+                      ? "border-blue-500 text-blue-600"
+                      : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                  }`}
+                >
+                  <span className="mr-2">{tab.icon}</span>
+                  {tab.label}
+                  {tab.count && tab.count > 0 && (
+                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center">
+                      {tab.count}
+                    </span>
+                  )}
+                </button>
+              ))}
+            </nav>
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-8">
+          {activeTab === "overview" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              <div className="lg:col-span-2 space-y-8">
+                {/* Project Goals & Requirements - Enhanced */}
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <span className="mr-2">🎯</span>
+                    Project Goals & Requirements
+                  </h3>
+                  
+                  {project.goals && (
+                    <div className="bg-white rounded-lg p-6 border border-blue-100 mb-4">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <span className="mr-2">🚀</span>
+                        Goals & Vision
+                      </h4>
+                      <div className="prose prose-sm max-w-none text-gray-600">
+                        {project.goals.split('\n').map((paragraph, index) => (
+                          paragraph.trim() && (
+                            <p key={index} className="mb-3 last:mb-0">
+                              {paragraph}
+                            </p>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {project.requirements && (
+                    <div className="bg-white rounded-lg p-6 border border-blue-100 mb-4">
+                      <h4 className="font-semibold text-gray-900 mb-3 flex items-center">
+                        <span className="mr-2">📋</span>
+                        Requirements & Skills Needed
+                      </h4>
+                      <div className="prose prose-sm max-w-none text-gray-600">
+                        {project.requirements.split('\n').map((paragraph, index) => (
+                          paragraph.trim() && (
+                            <p key={index} className="mb-3 last:mb-0">
+                              {paragraph}
+                            </p>
+                          )
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Show message if no goals/requirements */}
+                  {!project.goals && !project.requirements && (
+                    <div className="bg-white rounded-lg p-6 border border-blue-100">
+                      <p className="text-gray-600 leading-relaxed text-center">
+                        {isOwner 
+                          ? "Add your project goals and requirements by editing the project. This will help potential collaborators understand your vision and what skills you're looking for."
+                          : "The project creator hasn't added detailed goals and requirements yet. You can still express interest to learn more about the project vision."
+                        }
+                      </p>
+                      {isOwner && (
+                        <div className="text-center mt-4">
+                          <Link
+                            href={`/project/${project.id}/edit`}
+                            className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                          >
+                            <span className="mr-1">✏️</span>
+                            Add Goals & Requirements
+                          </Link>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Project Creator */}
+                <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
+                    <span className="mr-2">👨‍💻</span>
+                    Project Creator
+                  </h3>
+                  <div className="flex items-start gap-6">
+                    <UserAvatar user={project.creator} size="lg" />
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900 text-lg mb-1">
+                        {project.creator.name || "Anonymous"}
+                      </h4>
+                      <p className="text-gray-600 mb-3">
+                        @{project.creator.username || "user"}
+                      </p>
+                      {project.creator.bio && (
+                        <p className="text-gray-600 mb-4 leading-relaxed">{project.creator.bio}</p>
+                      )}
+                      
+                      <div className="flex gap-4">
+                        {project.creator.githubUrl && (
+                          <a
+                            href={project.creator.githubUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
+                          >
+                            <span>🔗</span>
+                            <span>GitHub</span>
+                          </a>
+                        )}
+                        {project.creator.linkedinUrl && (
+                          <a
+                            href={project.creator.linkedinUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
+                          >
+                            <span>💼</span>
+                            <span>LinkedIn</span>
+                          </a>
+                        )}
+                      </div>
+                    </div>
                   </div>
                   
-                  {currentUser && (
-                     <div className="flex items-center space-x-4">
-                        <div className="text-right">
-                           <p className="text-sm font-medium text-gray-900">{currentUser.name}</p>
-                           <p className="text-xs text-gray-500">@{currentUser.username || "user"}</p>
-                        </div>
-                     </div>
+                  {project.creator.skills && project.creator.skills.length > 0 && (
+                    <div className="mt-6 pt-6 border-t border-gray-200">
+                      <h5 className="text-sm font-medium text-gray-700 mb-3">Skills & Expertise</h5>
+                      <div className="flex flex-wrap gap-2">
+                        {project.creator.skills.map((skill, index) => (
+                          <span
+                            key={index}
+                            className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-sm border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
                   )}
-               </div>
-            </div>
-         </header>
+                </div>
+              </div>
 
-         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            {/* Project Header */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 mb-8">
-               <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-8">
-                  <div className="flex-1">
-                     <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-6">
-                        <h1 className="text-4xl font-bold text-gray-900">{project.title}</h1>
-                        <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(project.status)} whitespace-nowrap`}>
-                           {project.status}
+              {/* Sidebar */}
+              <div className="space-y-6">
+                {/* Quick Stats */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Stats</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Status</span>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(currentStatus)}`}>
+                        {statusOptions.find(s => s.value === currentStatus)?.label || currentStatus}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Team Size</span>
+                      <span className="font-medium text-gray-900">
+                        {acceptedMembers.length + 1}/{project.estimatedTeamSize || "∞"}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Technologies</span>
+                      <span className="font-medium text-gray-900">
+                        {project.techStack.length}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-gray-600">Applications</span>
+                      <span className="font-medium text-gray-900">
+                        {project.interests?.length || 0}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Team Preview */}
+                {(acceptedMembers.length > 0 || isOwner) && (
+                  <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center justify-between">
+                      Team Members
+                      <span className="text-sm font-normal text-gray-500">
+                        {acceptedMembers.length + 1}
+                      </span>
+                    </h3>
+                    <div className="space-y-3">
+                      {/* Creator */}
+                      <div className="flex items-center gap-3">
+                        <UserAvatar user={project.creator} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-900 truncate">
+                            {project.creator.name || "Anonymous"}
+                          </p>
+                          <p className="text-xs text-gray-500">Creator</p>
+                        </div>
+                      </div>
+
+                      {/* Team Members */}
+                      {acceptedMembers.slice(0, 3).map((member) => (
+                        <div key={member.id} className="flex items-center gap-3">
+                          <UserAvatar user={member.user} size="sm" />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-900 truncate">
+                              {member.user.name || "Anonymous"}
+                            </p>
+                            <p className="text-xs text-gray-500 capitalize">{member.role}</p>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      {acceptedMembers.length > 3 && (
+                        <div className="text-center">
+                          <button
+                            onClick={() => setActiveTab("team")}
+                            className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                          >
+                            +{acceptedMembers.length - 3} more members
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Recent Activity */}
+                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+                  <div className="space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                      <div>
+                        <p className="text-sm text-gray-900">Project created</p>
+                        <p className="text-xs text-gray-500">{formatDate(project.createdAt)}</p>
+                      </div>
+                    </div>
+                    {project.updatedAt > project.createdAt && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-blue-500 rounded-full mt-2"></div>
+                        <div>
+                          <p className="text-sm text-gray-900">Project updated</p>
+                          <p className="text-xs text-gray-500">{formatDate(project.updatedAt)}</p>
+                        </div>
+                      </div>
+                    )}
+                    {acceptedMembers.length > 0 && (
+                      <div className="flex items-start gap-3">
+                        <div className="w-2 h-2 bg-purple-500 rounded-full mt-2"></div>
+                        <div>
+                          <p className="text-sm text-gray-900">New team member joined</p>
+                          <p className="text-xs text-gray-500">Recent activity</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "team" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-semibold text-gray-900">Team Members</h3>
+                <div className="text-sm text-gray-500">
+                  {acceptedMembers.length + 1} {acceptedMembers.length === 0 ? 'member' : 'members'}
+                </div>
+              </div>
+
+              {/* Team Members Grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {/* Project Creator */}
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+                  <div className="flex items-center gap-4 mb-4">
+                    <UserAvatar user={project.creator} size="lg" />
+                    <div>
+                      <h4 className="font-semibold text-gray-900">
+                        {project.creator.name || "Anonymous"}
+                      </h4>
+                      <p className="text-sm text-gray-600">@{project.creator.username || "user"}</p>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mt-1">
+                        👑 Creator
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {project.creator.bio && (
+                    <p className="text-sm text-gray-600 mb-4">{project.creator.bio}</p>
+                  )}
+                  
+                  {project.creator.skills && project.creator.skills.length > 0 && (
+                    <div>
+                      <h5 className="text-xs font-medium text-gray-700 mb-2">Skills</h5>
+                      <div className="flex flex-wrap gap-1">
+                        {project.creator.skills.slice(0, 3).map((skill, index) => (
+                          <span
+                            key={index}
+                            className="bg-white text-gray-600 px-2 py-1 rounded text-xs border"
+                          >
+                            {skill}
+                          </span>
+                        ))}
+                        {project.creator.skills.length > 3 && (
+                          <span className="text-xs text-gray-500">
+                            +{project.creator.skills.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Team Members */}
+                {acceptedMembers.map((member) => (
+                  <div key={member.id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                    <div className="flex items-center gap-4 mb-4">
+                      <UserAvatar user={member.user} size="lg" />
+                      <div>
+                        <h4 className="font-semibold text-gray-900">
+                          {member.user.name || "Anonymous"}
+                        </h4>
+                        <p className="text-sm text-gray-600">@{member.user.username || "user"}</p>
+                        <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 mt-1 capitalize">
+                          {member.role}
                         </span>
-                     </div>
-                     
-                     <p className="text-gray-600 text-lg mb-8 leading-relaxed">
-                        {project.description}
-                     </p>
-
-                     {/* Tech Stack */}
-                     <div className="mb-6">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                           <span className="mr-2">⚡</span>
-                           Tech Stack
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                           {project.techStack.map((tech, index) => (
-                              <span 
-                                 key={index}
-                                 className="bg-blue-100 text-blue-800 px-3 py-1.5 rounded-full text-sm font-medium hover:bg-blue-200 transition-colors"
-                              >
-                                 {tech}
-                              </span>
-                           ))}
+                      </div>
+                    </div>
+                    
+                    {member.user.bio && (
+                      <p className="text-sm text-gray-600 mb-4">{member.user.bio}</p>
+                    )}
+                    
+                    <div className="text-xs text-gray-500 mb-4">
+                      Joined {formatDate(member.joinedAt)}
+                    </div>
+                    
+                    {member.user.skills && member.user.skills.length > 0 && (
+                      <div>
+                        <h5 className="text-xs font-medium text-gray-700 mb-2">Skills</h5>
+                        <div className="flex flex-wrap gap-1">
+                          {member.user.skills.slice(0, 3).map((skill, index) => (
+                            <span
+                              key={index}
+                              className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs"
+                            >
+                              {skill}
+                            </span>
+                          ))}
+                          {member.user.skills.length > 3 && (
+                            <span className="text-xs text-gray-500">
+                              +{member.user.skills.length - 3} more
+                            </span>
+                          )}
                         </div>
-                     </div>
-
-                     {/* Categories */}
-                     <div className="mb-8">
-                        <h3 className="text-sm font-semibold text-gray-900 mb-3 flex items-center">
-                           <span className="mr-2">🏷️</span>
-                           Categories
-                        </h3>
-                        <div className="flex flex-wrap gap-2">
-                           {project.tags.map((tag, index) => (
-                              <span 
-                                 key={index}
-                                 className="bg-purple-100 text-purple-800 px-3 py-1.5 rounded-full text-sm font-medium hover:bg-purple-200 transition-colors"
-                              >
-                                 {tag}
-                              </span>
-                           ))}
-                        </div>
-                     </div>
-
-                     {/* Project Info Grid */}
-                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-gray-50 rounded-lg p-4">
-                           <div className="flex items-center mb-2">
-                              <span className="text-lg mr-2">👥</span>
-                              <span className="text-sm font-medium text-gray-600">Team Size</span>
-                           </div>
-                           <span className="text-lg font-semibold text-gray-900">
-                              {project.estimatedTeamSize ? `${project.estimatedTeamSize} members` : "Flexible"}
-                           </span>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4">
-                           <div className="flex items-center mb-2">
-                              <span className="text-lg mr-2">📅</span>
-                              <span className="text-sm font-medium text-gray-600">Created</span>
-                           </div>
-                           <span className="text-lg font-semibold text-gray-900">
-                              {formatDate(project.createdAt)}
-                           </span>
-                        </div>
-                        <div className="bg-gray-50 rounded-lg p-4">
-                           <div className="flex items-center mb-2">
-                              <span className="text-lg mr-2">🔄</span>
-                              <span className="text-sm font-medium text-gray-600">Updated</span>
-                           </div>
-                           <span className="text-lg font-semibold text-gray-900">
-                              {formatDate(project.updatedAt)}
-                           </span>
-                        </div>
-                     </div>
+                      </div>
+                    )}
                   </div>
+                ))}
 
-                  {/* Action Buttons */}
-                  <div className="flex flex-col gap-3 lg:min-w-[200px]">
-                     {!isOwner && (
-                        <button
-                           onClick={() => setShowInterestModal(true)}
-                           className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-3 rounded-lg hover:from-blue-700 hover:to-blue-800 transition-all duration-200 font-medium shadow-sm hover:shadow-md transform hover:scale-105"
-                        >
-                           <span className="mr-2">✨</span>
-                           Express Interest
-                        </button>
-                     )}
-                     
-                     {project.githubUrl && (
-                        <a
-                           href={project.githubUrl}
-                           target="_blank"
-                           rel="noopener noreferrer"
-                           className="bg-gray-900 text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105"
-                        >
-                           <span className="mr-2">🔗</span>
-                           View on GitHub
-                        </a>
-                     )}
-
-                     {isOwner && (
-                        <Link
-                           href={`/project/${project.id}/edit`}
-                           className="bg-gradient-to-r from-green-600 to-green-700 text-white px-6 py-3 rounded-lg hover:from-green-700 hover:to-green-800 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105"
-                        >
-                           <span className="mr-2">✏️</span>
-                           Edit Project
-                        </Link>
-                     )}
+                {/* Empty State for Team */}
+                {acceptedMembers.length === 0 && (
+                  <div className="col-span-full bg-gray-50 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+                    <div className="text-4xl mb-4">👥</div>
+                    <h4 className="text-lg font-medium text-gray-900 mb-2">Looking for Team Members</h4>
+                    <p className="text-gray-600 mb-4">
+                      {isOwner 
+                        ? "Review applications and build your dream team!"
+                        : "Be the first to join this exciting project!"
+                      }
+                    </p>
+                    {!isOwner && currentUser && !hasExpressedInterest && (
+                      <button
+                        onClick={() => setShowInterestModal(true)}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                      >
+                        Join the Team
+                      </button>
+                    )}
                   </div>
-               </div>
+                )}
+              </div>
             </div>
+          )}
 
-            {/* Navigation Tabs */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8">
-               <div className="border-b border-gray-200">
-                  <nav className="flex space-x-8 px-6">
-                     {[
-                        { id: "overview", label: "Overview", icon: "📋" },
-                        { id: "team", label: "Team", icon: "👥" },
-                        { id: "discussions", label: "Discussions", icon: "💬" },
-                        { id: "resources", label: "Resources", icon: "📚" },
-                        { id: "activity", label: "Activity", icon: "⚡" },
-                     ].map((tab) => (
-                        <button
-                           key={tab.id}
-                           onClick={() => setActiveTab(tab.id)}
-                           className={`py-4 px-2 border-b-2 font-medium text-sm transition-all duration-200 ${
-                              activeTab === tab.id
-                                 ? "border-blue-500 text-blue-600"
-                                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-                           }`}
-                        >
-                           <span className="mr-2">{tab.icon}</span>
-                           {tab.label}
-                        </button>
-                     ))}
-                  </nav>
-               </div>
+          {activeTab === "applicants" && isOwner && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-semibold text-gray-900">Project Applications</h3>
+                <div className="text-sm text-gray-500">
+                  {pendingInterests.length} pending applications
+                </div>
+              </div>
 
-               {/* Tab Content */}
-               <div className="p-8">
-                  {activeTab === "overview" && (
-                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        <div className="lg:col-span-2 space-y-8">
-                           {/* Project Creator */}
-                           <div className="bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl p-6 border border-gray-200">
-                              <h3 className="text-xl font-semibold text-gray-900 mb-6 flex items-center">
-                                 <span className="mr-2">👨‍💻</span>
-                                 Project Creator
-                              </h3>
-                              <div className="flex items-start gap-6">
-                                 <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center overflow-hidden shadow-lg">
-                                    {project.creator.image && !imageError ? (
-                                       <Image
-                                          src={project.creator.image}
-                                          alt={project.creator.name || "User"}
-                                          width={64}
-                                          height={64}
-                                          className="rounded-full object-cover"
-                                          onError={() => setImageError(true)}
-                                       />
-                                    ) : (
-                                       <span className="text-white font-semibold text-xl">
-                                          {project.creator.name?.charAt(0) || "U"}
-                                       </span>
-                                    )}
-                                 </div>
-                                 <div className="flex-1">
-                                    <h4 className="font-semibold text-gray-900 text-lg mb-1">
-                                       {project.creator.name || "Anonymous"}
-                                    </h4>
-                                    <p className="text-gray-600 mb-3">
-                                       @{project.creator.username || "user"}
-                                    </p>
-                                    {project.creator.bio && (
-                                       <p className="text-gray-600 mb-4 leading-relaxed">{project.creator.bio}</p>
-                                    )}
-                                    
-                                    <div className="flex gap-4">
-                                       {project.creator.githubUrl && (
-                                          <a
-                                             href={project.creator.githubUrl}
-                                             target="_blank"
-                                             rel="noopener noreferrer"
-                                             className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
-                                          >
-                                             <span>🔗</span>
-                                             <span>GitHub</span>
-                                          </a>
-                                       )}
-                                       {project.creator.linkedinUrl && (
-                                          <a
-                                             href={project.creator.linkedinUrl}
-                                             target="_blank"
-                                             rel="noopener noreferrer"
-                                             className="flex items-center space-x-2 text-gray-600 hover:text-blue-600 transition-colors text-sm font-medium"
-                                          >
-                                             <span>💼</span>
-                                             <span>LinkedIn</span>
-                                          </a>
-                                       )}
-                                    </div>
-                                 </div>
+              {pendingInterests.length > 0 ? (
+                <div className="space-y-4">
+                  {pendingInterests.map((interest) => (
+                    <div key={interest.id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                      <div className="flex items-start gap-6">
+                        <UserAvatar user={interest.user} size="lg" />
+                        <div className="flex-1">
+                          <div className="flex items-center justify-between mb-3">
+                            <div>
+                              <h4 className="font-semibold text-gray-900 text-lg">
+                                {interest.user.name || "Anonymous"}
+                              </h4>
+                              <p className="text-gray-600">@{interest.user.username || "user"}</p>
+                            </div>
+                            <div className="text-right">
+                              <span className="text-sm text-gray-500">Applied</span>
+                              <p className="text-sm font-medium">{formatDate(interest.createdAt)}</p>
+                            </div>
+                          </div>
+                          
+                          {interest.user.bio && (
+                            <p className="text-gray-600 mb-4">{interest.user.bio}</p>
+                          )}
+                          
+                          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+                            <h5 className="font-medium text-gray-900 mb-2">Application Message</h5>
+                            <p className="text-gray-600 leading-relaxed">{interest.message}</p>
+                          </div>
+                          
+                          {interest.user.skills && interest.user.skills.length > 0 && (
+                            <div className="mb-4">
+                              <h5 className="text-sm font-medium text-gray-700 mb-2">Skills & Expertise</h5>
+                              <div className="flex flex-wrap gap-2">
+                                {interest.user.skills.map((skill, index) => (
+                                  <span
+                                    key={index}
+                                    className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm"
+                                  >
+                                    {skill}
+                                  </span>
+                                ))}
                               </div>
-                              
-                              {project.creator.skills && project.creator.skills.length > 0 && (
-                                 <div className="mt-6 pt-6 border-t border-gray-200">
-                                    <h5 className="text-sm font-medium text-gray-700 mb-3">Skills & Expertise</h5>
-                                    <div className="flex flex-wrap gap-2">
-                                       {project.creator.skills.map((skill, index) => (
-                                          <span
-                                             key={index}
-                                             className="bg-white text-gray-700 px-3 py-1.5 rounded-full text-sm border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                                          >
-                                             {skill}
-                                          </span>
-                                       ))}
-                                    </div>
-                                 </div>
+                            </div>
+                          )}
+                          
+                          <div className="flex items-center gap-3">
+                            <button
+                              onClick={() => handleInterestAction(interest.id, "accepted")}
+                              className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors font-medium flex items-center gap-2"
+                            >
+                              <span>✅</span>
+                              Accept
+                            </button>
+                            <button
+                              onClick={() => handleInterestAction(interest.id, "rejected")}
+                              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors font-medium flex items-center gap-2"
+                            >
+                              <span>❌</span>
+                              Reject
+                            </button>
+                            <div className="flex gap-2 ml-auto">
+                              {interest.user.githubUrl && (
+                                <a
+                                  href={interest.user.githubUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-gray-600 hover:text-blue-600 transition-colors p-2"
+                                  title="GitHub Profile"
+                                >
+                                  🔗
+                                </a>
                               )}
-                           </div>
-
-                           {/* Project Goals */}
-                           <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-200">
-                              <h3 className="text-xl font-semibold text-gray-900 mb-4 flex items-center">
-                                 <span className="mr-2">🎯</span>
-                                 Project Goals & Vision
-                              </h3>
-                              <div className="bg-white rounded-lg p-6 border border-blue-100">
-                                 <p className="text-gray-600 leading-relaxed">
-                                    This section would contain detailed project goals, milestones, and objectives.
-                                    The creator can add this information when editing the project to help potential 
-                                    collaborators understand the project's vision and what they hope to achieve.
-                                 </p>
-                              </div>
-                           </div>
+                              {interest.user.linkedinUrl && (
+                                <a
+                                  href={interest.user.linkedinUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-gray-600 hover:text-blue-600 transition-colors p-2"
+                                  title="LinkedIn Profile"
+                                >
+                                  💼
+                                </a>
+                              )}
+                            </div>
+                          </div>
                         </div>
-
-                        {/* Sidebar */}
-                        <div className="space-y-6">
-                           {/* Quick Stats */}
-                           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Stats</h3>
-                              <div className="space-y-4">
-                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">Status</span>
-                                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
-                                       {project.status}
-                                    </span>
-                                 </div>
-                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">Team Size</span>
-                                    <span className="font-medium text-gray-900">
-                                       {project.estimatedTeamSize || "Flexible"}
-                                    </span>
-                                 </div>
-                                 <div className="flex items-center justify-between">
-                                    <span className="text-gray-600">Technologies</span>
-                                    <span className="font-medium text-gray-900">
-                                       {project.techStack.length}
-                                    </span>
-                                 </div>
-                              </div>
-                           </div>
-
-                           {/* Interest CTA */}
-                           {!isOwner && (
-                              <div className="bg-gradient-to-br from-green-50 to-blue-50 rounded-xl border border-green-200 p-6">
-                                 <h3 className="text-lg font-semibold text-gray-900 mb-2">Interested in Joining?</h3>
-                                 <p className="text-gray-600 text-sm mb-4">
-                                    Express your interest and let the creator know why you'd be a great addition to the team!
-                                 </p>
-                                 <button
-                                    onClick={() => setShowInterestModal(true)}
-                                    className="w-full bg-gradient-to-r from-green-600 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-green-700 hover:to-blue-700 transition-all duration-200 font-medium"
-                                 >
-                                    Get Started
-                                 </button>
-                              </div>
-                           )}
-                        </div>
-                     </div>
-                  )}
-
-                  {/* Other tabs with modern empty states */}
-                  {activeTab === "team" && (
-                     <div className="text-center py-16">
-                        <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                           <span className="text-3xl">👥</span>
-                        </div>
-                        <h3 className="text-2xl font-semibold text-gray-900 mb-3">Team Management</h3>
-                        <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                           Team collaboration features will be implemented here. Manage team members, roles, and permissions.
-                        </p>
-                        <div className="inline-flex items-center px-6 py-3 bg-blue-100 text-blue-800 rounded-full text-sm font-medium">
-                           Coming Soon
-                        </div>
-                     </div>
-                  )}
-
-                  {activeTab === "discussions" && (
-                     <div className="text-center py-16">
-                        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                           <span className="text-3xl">💬</span>
-                        </div>
-                        <h3 className="text-2xl font-semibold text-gray-900 mb-3">Project Discussions</h3>
-                        <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                           Discussion threads, comments, and real-time chat will be available here for team collaboration.
-                        </p>
-                        <div className="inline-flex items-center px-6 py-3 bg-green-100 text-green-800 rounded-full text-sm font-medium">
-                           Coming Soon
-                        </div>
-                     </div>
-                  )}
-
-                  {activeTab === "resources" && (
-                     <div className="text-center py-16">
-                        <div className="w-20 h-20 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                           <span className="text-3xl">📚</span>
-                        </div>
-                        <h3 className="text-2xl font-semibold text-gray-900 mb-3">Project Resources</h3>
-                        <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                           Shared files, documentation, links, and other resources will be organized and accessible here.
-                        </p>
-                        <div className="inline-flex items-center px-6 py-3 bg-purple-100 text-purple-800 rounded-full text-sm font-medium">
-                           Coming Soon
-                        </div>
-                     </div>
-                  )}
-
-                  {activeTab === "activity" && (
-                     <div className="text-center py-16">
-                        <div className="w-20 h-20 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                           <span className="text-3xl">⚡</span>
-                        </div>
-                        <h3 className="text-2xl font-semibold text-gray-900 mb-3">Recent Activity</h3>
-                        <p className="text-gray-600 mb-8 max-w-md mx-auto">
-                           Project timeline, activity feed, and progress updates will be displayed here.
-                        </p>
-                        <div className="inline-flex items-center px-6 py-3 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
-                           Coming Soon
-                        </div>
-                     </div>
-                  )}
-               </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="bg-gray-50 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+                  <div className="text-4xl mb-4">📭</div>
+                  <h4 className="text-lg font-medium text-gray-900 mb-2">No Applications Yet</h4>
+                  <p className="text-gray-600">
+                    Applications will appear here when people express interest in your project.
+                  </p>
+                </div>
+              )}
             </div>
-         </main>
+          )}
 
-         {/* Interest Modal */}
-         {showInterestModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-               <div className="bg-white rounded-2xl p-8 w-full max-w-md shadow-2xl transform transition-all">
-                  <div className="text-center mb-6">
-                     <div className="w-16 h-16 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center mx-auto mb-4">
-                        <span className="text-2xl text-white">✨</span>
-                     </div>
-                     <h3 className="text-2xl font-semibold text-gray-900 mb-2">
-                        Express Interest
-                     </h3>
-                     <p className="text-gray-600">
-                        Tell {project.creator.name} why you'd like to join "{project.title}"
-                     </p>
-                  </div>
-                  
-                  <textarea
-                     value={interestMessage}
-                     onChange={(e) => setInterestMessage(e.target.value)}
-                     placeholder="Hi! I'm interested in joining your project because..."
-                     className="w-full p-4 border border-gray-300 rounded-xl resize-none h-32 mb-6 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                  />
-                  
-                  <div className="flex gap-3">
-                     <button
-                        onClick={() => setShowInterestModal(false)}
-                        className="flex-1 bg-gray-200 text-gray-800 px-6 py-3 rounded-xl hover:bg-gray-300 transition-colors font-medium"
-                     >
-                        Cancel
-                     </button>
-                     <button
-                        onClick={handleExpressInterest}
-                        disabled={!interestMessage.trim() || isSubmittingInterest}
-                        className="flex-1 bg-gradient-to-r from-blue-600 to-purple-600 text-white px-6 py-3 rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-                     >
-                        {isSubmittingInterest ? "Sending..." : "Send Interest"}
-                     </button>
-                  </div>
-               </div>
+          {activeTab === "discussions" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-semibold text-gray-900">Project Discussions</h3>
+                {(isOwner || acceptedMembers.some(m => m.userId === currentUser?.id)) && (
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    Start Discussion
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+                <div className="text-4xl mb-4">💬</div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Discussions Yet</h4>
+                <p className="text-gray-600 mb-4">
+                  Start the conversation! Discussions help team members collaborate and share ideas.
+                </p>
+                {(isOwner || acceptedMembers.some(m => m.userId === currentUser?.id)) && (
+                  <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    Start First Discussion
+                  </button>
+                )}
+              </div>
             </div>
-         )}
-      </div>
-   );
+          )}
+
+          {activeTab === "resources" && (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between">
+                <h3 className="text-2xl font-semibold text-gray-900">Project Resources</h3>
+                {(isOwner || acceptedMembers.some(m => m.userId === currentUser?.id)) && (
+                  <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    Add Resource
+                  </button>
+                )}
+              </div>
+
+              <div className="bg-gray-50 rounded-xl p-12 text-center border-2 border-dashed border-gray-300">
+                <div className="text-4xl mb-4">📚</div>
+                <h4 className="text-lg font-medium text-gray-900 mb-2">No Resources Yet</h4>
+                <p className="text-gray-600 mb-4">
+                  Share documents, links, and files to help your team collaborate effectively.
+                </p>
+                {(isOwner || acceptedMembers.some(m => m.userId === currentUser?.id)) && (
+                  <button className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 transition-colors font-medium">
+                    Add First Resource
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeTab === "activity" && (
+            <div className="space-y-6">
+              <h3 className="text-2xl font-semibold text-gray-900">Project Activity</h3>
+              
+              <div className="space-y-4">
+                <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-start gap-4">
+                  <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                    <span className="text-green-600">🚀</span>
+                  </div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Project Created</p>
+                    <p className="text-sm text-gray-600">
+                      {project.creator.name} created this project
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">{formatDate(project.createdAt)}</p>
+                  </div>
+                </div>
+
+                {project.updatedAt > project.createdAt && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-start gap-4">
+                    <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                      <span className="text-blue-600">📝</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Project Updated</p>
+                      <p className="text-sm text-gray-600">Project details were modified</p>
+                      <p className="text-xs text-gray-500 mt-1">{formatDate(project.updatedAt)}</p>
+                    </div>
+                  </div>
+                )}
+
+                {acceptedMembers.map((member) => (
+                  <div key={member.id} className="bg-white rounded-lg p-4 border border-gray-200 flex items-start gap-4">
+                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                      <span className="text-purple-600">👥</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">New Team Member</p>
+                      <p className="text-sm text-gray-600">
+                        {member.user.name} joined the team
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">{formatDate(member.joinedAt)}</p>
+                    </div>
+                  </div>
+                ))}
+
+                {project.interests && project.interests.length > 0 && (
+                  <div className="bg-white rounded-lg p-4 border border-gray-200 flex items-start gap-4">
+                    <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                      <span className="text-orange-600">✋</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Interest Expressed</p>
+                      <p className="text-sm text-gray-600">
+                        {project.interests.length} {project.interests.length === 1 ? 'person has' : 'people have'} shown interest
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">Recent activity</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+        {/* Interest Modal */}
+        {showInterestModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-xl p-6 max-w-md w-full">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">Express Interest</h3>
+              <p className="text-gray-600 mb-4">
+                Tell the project creator why you'd like to join their team:
+              </p>
+              <textarea
+                value={interestMessage}
+                onChange={(e) => setInterestMessage(e.target.value)}
+                placeholder="I'm interested in this project because..."
+                rows={4}
+                className="w-full border border-gray-300 rounded-lg p-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+              />
+              <div className="flex gap-3 mt-6">
+                <button
+                  onClick={handleExpressInterest}
+                  disabled={isSubmittingInterest || !interestMessage.trim()}
+                  className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors font-medium"
+                >
+                  {isSubmittingInterest ? "Submitting..." : "Send Application"}
+                </button>
+                <button
+                  onClick={() => {
+                    setShowInterestModal(false);
+                    setInterestMessage("");
+                  }}
+                  className="flex-1 bg-gray-300 text-gray-700 py-2 px-4 rounded-lg hover:bg-gray-400 transition-colors font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
+    </div>
+  );
 }
