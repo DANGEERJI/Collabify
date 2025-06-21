@@ -1,20 +1,7 @@
 import { signOut } from "next-auth/react";
 import { UserAvatar } from "../ui/UserAvatar";
+import { User } from "@prisma/client";
 
-interface User {
-   id: string;
-   name: string | null;
-   email: string | null;
-   username: string | null;
-   image: string | null;
-   bio: string | null;
-   skills: string[];
-   interests: string[];
-   createdAt: Date;
-   githubUrl: string | null;
-   linkedinUrl: string | null;
-   portfolioUrl: string | null;
-}
 
 interface HeaderProps {
    isDashBoard: boolean;

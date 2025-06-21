@@ -2,38 +2,10 @@
 "use client";
 
 import {Header} from "@/components/layout/AppHeader";
-import { signOut } from "next-auth/react";
 import { useState, useEffect } from "react";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { User, Project } from "@prisma/client";
 
-interface User {
-   id: string;
-   name: string | null;
-   email: string | null;
-   username: string | null;
-   image: string | null;
-   bio: string | null;
-   skills: string[];
-   interests: string[];
-   createdAt: Date;
-   githubUrl: string | null;
-   linkedinUrl: string | null;
-   portfolioUrl: string | null;
-}
-
-// Add Project interface to match your Prisma schema
-interface Project {
-   id: string;
-   title: string;
-   description: string;
-   techStack: string[];
-   tags: string[];
-   githubUrl: string | null;
-   estimatedTeamSize: number | null;
-   createdBy: string;
-   createdAt: Date;
-   updatedAt: Date;
-   status: string; // Now required since we added it to Prisma schema
-}
 
 interface DashboardContentProps {
    user: User;
@@ -45,7 +17,6 @@ export default function DashboardContent({ user }: DashboardContentProps) {
    const [projects, setProjects] = useState<Project[]>([]);
    const [projectsLoading, setProjectsLoading] = useState(true);
    const [projectsError, setProjectsError] = useState<string | null>(null);
-   const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
 
    useEffect(() => {
       const fetchProjects = async () => {
@@ -92,81 +63,6 @@ export default function DashboardContent({ user }: DashboardContentProps) {
          month: 'long', 
          year: 'numeric' 
       }).format(new Date(date));
-   };
-
-   // Helper function to get status color
-   const getStatusColor = (status: string) => {
-      switch (status.toLowerCase()) {
-         case 'active':
-            return 'bg-green-100 text-green-800';
-         case 'completed':
-            return 'bg-blue-100 text-blue-800';
-         case 'paused':
-            return 'bg-yellow-100 text-yellow-800';
-         case 'cancelled':
-            return 'bg-red-100 text-red-800';
-         default:
-            return 'bg-gray-100 text-gray-800';
-      }
-   };
-
-   // Helper function to get status display name
-   const getStatusDisplayName = (status: string) => {
-      switch (status.toLowerCase()) {
-         case 'active':
-            return 'Active';
-         case 'completed':
-            return 'Completed';
-         case 'paused':
-            return 'Paused';
-         case 'cancelled':
-            return 'Cancelled';
-         default:
-            return status;
-      }
-   };
-
-   // Function to update project status
-   const updateProjectStatus = async (projectId: string, newStatus: string) => {
-      try {
-         setUpdatingStatus(projectId);
-         
-         const response = await fetch('/api/projects/update-status', {
-            method: 'PATCH',
-            headers: {
-               'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-               projectId,
-               status: newStatus
-            })
-         });
-
-         if (!response.ok) {
-            throw new Error('Failed to update project status');
-         }
-
-         const data = await response.json();
-         
-         if (data.success) {
-            // Update the local projects state
-            setProjects(prevProjects => 
-               prevProjects.map(project => 
-                  project.id === projectId 
-                     ? { ...project, status: newStatus, updatedAt: new Date() }
-                     : project
-               )
-            );
-         } else {
-            throw new Error(data.error || 'Failed to update project status');
-         }
-      } catch (error) {
-         console.error('Error updating project status:', error);
-         // You might want to show a toast notification here
-         alert('Failed to update project status. Please try again.');
-      } finally {
-         setUpdatingStatus(null);
-      }
    };
 
    // Function to handle project card click
@@ -378,29 +274,14 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                                     className="relative"
                                     onClick={(e) => e.stopPropagation()} // Prevent card click when clicking anywhere in this div
                                  >
-                                    <select
-                                       value={project.status}
-                                       onChange={(e) => {
-                                          e.stopPropagation(); // Also prevent on change
-                                          updateProjectStatus(project.id, e.target.value);
-                                       }}
-                                       disabled={updatingStatus === project.id}
-                                       className={`px-2 py-1 rounded-full text-xs font-medium border-0 cursor-pointer transition-all duration-200 ${getStatusColor(project.status)} ${
-                                          updatingStatus === project.id 
-                                             ? 'opacity-50 cursor-not-allowed' 
-                                             : 'hover:shadow-sm focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50'
-                                       }`}
-                                    >
-                                       <option value="active">Active</option>
-                                       <option value="paused">Paused</option>
-                                       <option value="completed">Completed</option>
-                                       <option value="cancelled">Cancelled</option>
-                                    </select>
-                                    {updatingStatus === project.id && (
-                                       <div className="absolute inset-0 flex items-center justify-center">
-                                          <div className="w-3 h-3 border border-gray-400 border-t-transparent rounded-full animate-spin"></div>
-                                       </div>
-                                    )}
+                                    <StatusBadge project={project} onStatusUpdate={(updatedProject) => {
+                                       setProjects(prevProjects => 
+                                          prevProjects.map(p => 
+                                             p.id === updatedProject.id ? updatedProject : p
+                                          )
+                                       );
+                                    }}
+                                    />
                                  </div>
                               </div>
                               

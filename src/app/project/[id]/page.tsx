@@ -19,18 +19,16 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
    const project = await prisma.project.findUnique({
       where: { id },
       include: {
-         creator: {
-         select: {
-            id: true,
-            name: true,
-            email: true,
-            image: true,
-            username: true,
-            bio: true,
-            skills: true,
-            githubUrl: true,
-            linkedinUrl: true,
+         creator: true,
+         interests: {
+            include: {
+               user: true,
+            }
          },
+         teamMembers:{
+            include: {
+               user: true,
+            }
          },
       },
    });

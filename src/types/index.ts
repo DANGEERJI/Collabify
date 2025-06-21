@@ -1,17 +1,5 @@
 // src/types/index.ts
-
-// Database User type (matches Prisma schema)
-export interface User {
-   id: string;
-   name: string | null;
-   email: string | null;
-   image: string | null;
-   username: string | null;
-   bio?: string | null;
-   skills?: string[];
-   githubUrl?: string | null;
-   linkedinUrl?: string | null;
-}
+import { User, Project, ProjectInterest, TeamMember } from "@prisma/client";
 
 // Session User type (matches NextAuth session structure)
 export interface SessionUser {
@@ -26,32 +14,32 @@ export interface SessionUser {
    linkedinUrl?: string | null;
 }
 
-// Project type (matches database structure)
-export interface Project {
-   id: string;
-   title: string;
-   description: string;
-   techStack: string[];
-   tags: string[];
-   githubUrl: string | null;
-   estimatedTeamSize: number | null;
-   status: string;
-   createdAt: Date;
-   updatedAt: Date;
-   creator: User;
-}
-
 // Helper function to convert SessionUser to User
 export function sessionUserToUser(sessionUser: SessionUser): User {
    return {
       id: sessionUser.id,
       name: sessionUser.name ?? null,
       email: sessionUser.email ?? null,
+      emailVerified: null,        // ✅ Add this
       image: sessionUser.image ?? null,
       username: sessionUser.username ?? null,
       bio: sessionUser.bio ?? null,
       skills: sessionUser.skills ?? [],
+      interests: [],              // ✅ Add this
       githubUrl: sessionUser.githubUrl ?? null,
       linkedinUrl: sessionUser.linkedinUrl ?? null,
+      portfolioUrl: null,         // ✅ Add this
+      createdAt: new Date(),      // ✅ Add this
+      updatedAt: new Date(),      // ✅ Add this
    };
 }
+
+export type ProjectWithDetails = Project & {
+   creator: User;
+   interests: (ProjectInterest & {
+      user: User;
+   })[];
+   teamMembers: (TeamMember & {
+      user: User;
+   })[];
+};

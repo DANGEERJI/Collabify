@@ -6,68 +6,21 @@ import Link from "next/link";
 import { format } from "date-fns";
 import {Header} from "@/components/layout/AppHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-
-// Enhanced type definitions
-interface User {
-  id: string;
-  name: string | null;
-  email: string | null;
-  username: string | null;
-  image: string | null;
-  bio: string | null;
-  skills: string[];
-  interests: string[];
-  createdAt: Date;
-  githubUrl: string | null;
-  linkedinUrl: string | null;
-  portfolioUrl: string | null;
-}
-
-interface ProjectInterest {
-  id: string;
-  userId: string;
-  message: string;
-  status: "pending" | "accepted" | "rejected";
-  createdAt: Date;
-  user: User;
-}
-
-interface TeamMember {
-  id: string;
-  userId: string;
-  role: "owner" | "admin" | "member";
-  joinedAt: Date;
-  user: User;
-}
-
-interface Project {
-  id: string;
-  title: string;
-  description: string;
-  techStack: string[];
-  tags: string[];
-  githubUrl: string | null;
-  estimatedTeamSize: number | null;
-  status: "active" | "completed" | "on-hold" | "cancelled";
-  goals: string | null;
-  requirements: string | null;
-  createdBy: string;
-  createdAt: Date;
-  updatedAt: Date;
-  creator: User;
-  interests?: ProjectInterest[];
-  teamMembers?: TeamMember[];
-}
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { User, Project, ProjectInterest, TeamMember } from "@prisma/client";
+import { ProjectWithDetails } from "@/types";
 
 interface ProjectDetailContentProps {
-  project: Project;
+  project: ProjectWithDetails;
   currentUser: User | null;
+  sessionUser: User | null;
   isOwner: boolean;
 }
 
 export default function ProjectDetailContent({ 
   project, 
-  currentUser, 
+  currentUser,
+  sessionUser, 
   isOwner 
 }: ProjectDetailContentProps) {
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -76,6 +29,7 @@ export default function ProjectDetailContent({
   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(project.status);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [projects, setProjects] = useState<Project>(project);
 
   const statusOptions = [
     { value: "active", label: "Active", color: "bg-green-100 text-green-800" },
@@ -155,32 +109,6 @@ export default function ProjectDetailContent({
     return format(new Date(date), "MMM d, yyyy");
   };
 
-  // const UserAvatar = ({ user, size = "md" }: { user: User; size?: "sm" | "md" | "lg" }) => {
-  //   const sizeClasses = {
-  //     sm: "w-8 h-8 text-sm",
-  //     md: "w-12 h-12 text-base",
-  //     lg: "w-16 h-16 text-xl"
-  //   };
-
-  //   return (
-  //     <div className={`${sizeClasses[size]} bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center overflow-hidden shadow-lg`}>
-  //       {user.image ? (
-  //         <Image
-  //           src={user.image}
-  //           alt={user.name || "User"}
-  //           width={size === "sm" ? 32 : size === "md" ? 48 : 64}
-  //           height={size === "sm" ? 32 : size === "md" ? 48 : 64}
-  //           className="rounded-full object-cover"
-  //         />
-  //       ) : (
-  //         <span className="text-white font-semibold">
-  //           {user.name?.charAt(0) || "U"}
-  //         </span>
-  //       )}
-  //     </div>
-  //   );
-  // };
-
   // Handle interest actions (accept/reject)
   async function handleInterestAction(interestId: string, action: "accepted" | "rejected") {
     try {
@@ -218,45 +146,15 @@ export default function ProjectDetailContent({
                 <div className="flex items-center gap-3">
                   {isOwner ? (
                     <div className="relative">
-                      <select
-                        value={currentStatus}
-                        onChange={(e) => handleStatusChange(e.target.value)}
-                        disabled={isUpdatingStatus}
-                        className={`px-4 py-2 rounded-full text-sm font-medium border-2 border-transparent focus:border-blue-500 focus:outline-none cursor-pointer transition-all ${getStatusColor(currentStatus)} ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : 'hover:opacity-80 hover:scale-105'}`}
-                      >
-                        {statusOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                      {isUpdatingStatus && (
-                        <div className="absolute right-2 top-1/2 transform -translate-y-1/2">
-                          <div className="animate-spin h-4 w-4 border-2 border-current border-t-transparent rounded-full"></div>
-                        </div>
-                      )}
+                      <StatusBadge project={project} onStatusUpdate={(updatedProject) => {
+                        setProjects(updatedProject);
+                      }}
+                      />
                     </div>
                   ) : (
                     <span className={`px-4 py-2 rounded-full text-sm font-medium ${getStatusColor(currentStatus)} whitespace-nowrap`}>
                       {statusOptions.find(s => s.value === currentStatus)?.label || currentStatus}
                     </span>
-                  )}
-                  
-                  {/* Quick Status Update Buttons for Owner */}
-                  {isOwner && (
-                    <div className="hidden lg:flex items-center gap-2">
-                      <span className="text-xs text-gray-500">Quick:</span>
-                      {statusOptions.filter(opt => opt.value !== currentStatus).slice(0, 2).map((option) => (
-                        <button
-                          key={option.value}
-                          onClick={() => handleStatusChange(option.value)}
-                          disabled={isUpdatingStatus}
-                          className={`px-3 py-1 rounded-full text-xs font-medium border-2 border-gray-300 hover:border-blue-400 transition-all ${isUpdatingStatus ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105'}`}
-                        >
-                          {option.label}
-                        </button>
-                      ))}
-                    </div>
                   )}
                 </div>
               </div>
@@ -381,8 +279,21 @@ export default function ProjectDetailContent({
                     Manage Team
                   </Link>
                   {pendingInterests.length > 0 && (
-                    <Link
-                      href={`/project/${project.id}/interests`}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setActiveTab("applicants");
+
+                        setTimeout(() => {
+                          const tabElement = document.getElementById("project-tabs");
+                          if(tabElement) {
+                            tabElement.scrollIntoView({
+                              behavior: "smooth",
+                              block: "start"
+                            });
+                          }
+                        }, 100);
+                      }}
                       className="bg-gradient-to-r from-orange-600 to-red-600 text-white px-6 py-3 rounded-lg hover:from-orange-700 hover:to-red-700 transition-all duration-200 font-medium text-center shadow-sm hover:shadow-md transform hover:scale-105 relative"
                     >
                       <span className="mr-2">📧</span>
@@ -390,7 +301,7 @@ export default function ProjectDetailContent({
                       <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs w-6 h-6 rounded-full flex items-center justify-center">
                         {pendingInterests.length}
                       </span>
-                    </Link>
+                    </button>
                   )}
                 </>
               )}
@@ -413,12 +324,25 @@ export default function ProjectDetailContent({
                   </p>
                 </div>
               </div>
-              <Link
-                href={`/project/${project.id}/interests`}
-                className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium"
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  setActiveTab("applicants");
+
+                  setTimeout(() => {
+                    const tabElement = document.getElementById("project-tabs");
+                    if(tabElement) {
+                      tabElement.scrollIntoView({
+                        behavior: "smooth",
+                        block: "start"
+                      });
+                    }
+                  }, 100);
+                }}
+                className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 transition-colors font-medium cursor-pointer"
               >
                 Review Applications
-              </Link>
+              </button>
             </div>
           </div>
         )}
@@ -458,7 +382,7 @@ export default function ProjectDetailContent({
         </div>
 
         {/* Tab Content */}
-        <div className="p-8">
+        <div className="p-8" id="project-tabs">
           {activeTab === "overview" && (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               <div className="lg:col-span-2 space-y-8">
@@ -852,7 +776,7 @@ export default function ProjectDetailContent({
                           <div className="flex items-center justify-between mb-3">
                             <div>
                               <h4 className="font-semibold text-gray-900 text-lg">
-                                {interest.user.name || "Anonymous"}
+                                {interest?.user?.name || "Anonymous"}
                               </h4>
                               <p className="text-gray-600">@{interest.user.username || "user"}</p>
                             </div>
