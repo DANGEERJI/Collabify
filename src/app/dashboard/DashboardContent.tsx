@@ -5,6 +5,8 @@ import {Header} from "@/components/layout/AppHeader";
 import { useState, useEffect } from "react";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { User, Project } from "@prisma/client";
+import Link from "next/link";
+import { redirect } from "next/navigation";
 
 
 interface DashboardContentProps {
@@ -397,7 +399,11 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                            </div>
                         )}
 
-                        <button className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
+                        <button 
+                           onClick={()=>{
+                              redirect("/profile/edit");
+                           }}
+                           className="w-full text-sm text-blue-600 hover:text-blue-700 font-medium py-2 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors">
                            Edit Profile
                         </button>
                      </div>

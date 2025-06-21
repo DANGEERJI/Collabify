@@ -1,0 +1,415 @@
+// src/app/profile/edit/EditProfileForm.tsx
+'use client';
+
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
+import { Header } from '@/components/layout/AppHeader';
+import { User } from '@prisma/client';
+
+import { 
+   User2, 
+   Mail, 
+   Github, 
+   Linkedin, 
+   Globe, 
+   Plus, 
+   X, 
+   Save,
+   AlertCircle,
+   CheckCircle
+} from 'lucide-react';
+import { useHardRefresh } from '@/hooks/useHardRefresh';
+
+interface EditProfileFormProps {
+   user: User;
+}
+
+export default function EditProfileForm({ user }: EditProfileFormProps) {
+   const router = useRouter();
+   const { sessionRefresh } = useHardRefresh();
+   const [isLoading, setIsLoading] = useState(false);
+   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+   const [formData, setFormData] = useState({
+      name: user.name || '',
+      bio: user.bio || '',
+      skills: user.skills || [],
+      interests: user.interests || [],
+      githubUrl: user.githubUrl || '',
+      linkedinUrl: user.linkedinUrl || '',
+      portfolioUrl: user.portfolioUrl || '',
+   });
+
+   const [newSkill, setNewSkill] = useState('');
+   const [newInterest, setNewInterest] = useState('');
+
+   const handleInputChange = (field: string, value: string) => {
+      setFormData(prev => ({ ...prev, [field]: value }));
+   };
+
+   const addSkill = () => {
+      if (newSkill.trim() && !formData.skills.includes(newSkill.trim()) && formData.skills.length < 20) {
+         setFormData(prev => ({
+         ...prev,
+         skills: [...prev.skills, newSkill.trim()]
+         }));
+         setNewSkill('');
+      }
+   };
+
+   const removeSkill = (skillToRemove: string) => {
+      setFormData(prev => ({
+         ...prev,
+         skills: prev.skills.filter(skill => skill !== skillToRemove)
+      }));
+   };
+
+   const addInterest = () => {
+      if (newInterest.trim() && !formData.interests.includes(newInterest.trim()) && formData.interests.length < 20) {
+         setFormData(prev => ({
+         ...prev,
+         interests: [...prev.interests, newInterest.trim()]
+         }));
+         setNewInterest('');
+      }
+   };
+
+   const removeInterest = (interestToRemove: string) => {
+      setFormData(prev => ({
+         ...prev,
+         interests: prev.interests.filter(interest => interest !== interestToRemove)
+      }));
+   };
+
+   const handleSubmit = async (e: React.FormEvent) => {
+      e.preventDefault();
+      setIsLoading(true);
+      setMessage(null);
+
+      try {
+         const response = await fetch('/api/user/profile/edit', {
+         method: 'PUT',
+         headers: {
+            'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(formData),
+         });
+
+         const data = await response.json();
+
+         if (response.ok) {
+         setMessage({ type: 'success', text: 'Profile updated successfully!' });
+         setTimeout(() => {
+            sessionRefresh(`/users/${user.username}`);
+         }, 1500);
+         } else {
+         setMessage({ type: 'error', text: data.error || 'Failed to update profile' });
+         }
+      } catch (error) {
+         setMessage({ type: 'error', text: 'An error occurred while updating your profile' });
+      } finally {
+         setIsLoading(false);
+      }
+   };
+
+   return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
+         <Header user={user} isDashBoard={false}/>
+         <div className="container mx-auto px-4 py-8">
+            <div className="max-w-4xl mx-auto">
+               {/* Header */}
+               <div className="text-center mb-8">
+                  <h1 className="text-4xl font-bold text-gray-900 mb-2">
+                  Edit Your Profile
+                  </h1>
+                  <p className="text-gray-600 text-lg">
+                  Keep your profile updated to connect with the right collaborators
+                  </p>
+               </div>
+
+               {/* Main Content */}
+               <div className="bg-white rounded-2xl shadow-xl overflow-hidden">
+                  <div className="bg-gradient-to-r from-blue-600 to-purple-600 px-8 py-6">
+                  <h2 className="text-2xl font-semibold text-white">
+                     Profile Information
+                  </h2>
+                  <p className="text-blue-100 mt-1">
+                     Update your details to showcase your skills and interests
+                  </p>
+                  </div>
+                  <form onSubmit={handleSubmit} className="p-8 space-y-8">
+                     {/* Message Display */}
+                     {message && (
+                     <div className={`flex items-center gap-2 p-4 rounded-lg ${
+                        message.type === 'success' 
+                           ? 'bg-green-50 text-green-800 border border-green-200' 
+                           : 'bg-red-50 text-red-800 border border-red-200'
+                     }`}>
+                        {message.type === 'success' ? (
+                           <CheckCircle className="w-5 h-5 flex-shrink-0" />
+                        ) : (
+                           <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                        )}
+                        <span>{message.text}</span>
+                     </div>
+                     )}
+
+                     {/* Profile Photo & Basic Info */}
+                     <div className="flex flex-col md:flex-row gap-8 items-start">
+                     <div className="flex-shrink-0">
+                        <div className="w-24 h-24 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center overflow-hidden">
+                           {user.image ? (
+                           <Image 
+                              src={user.image} 
+                              alt="Profile" 
+                              width={96} 
+                              height={96}
+                              className="w-full h-full object-cover"
+                           />
+                           ) : (
+                           <User2 className="w-12 h-12 text-white" />
+                           )}
+                        </div>
+                     </div>
+
+                     <div className="flex-1 space-y-6">
+                        {/* Username (Read-only) */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Username
+                           </label>
+                           <div className="relative">
+                           <User2 className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                           <input
+                              type="text"
+                              value={user.username || ''}
+                              disabled
+                              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                           />
+                           </div>
+                           <p className="text-xs text-gray-500 mt-1">Username cannot be changed</p>
+                        </div>
+
+                        {/* Email (Read-only) */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Email
+                           </label>
+                           <div className="relative">
+                           <Mail className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                           <input
+                              type="email"
+                              value={user.email || ''}
+                              disabled
+                              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg bg-gray-50 text-gray-500 cursor-not-allowed"
+                           />
+                           </div>
+                        </div>
+
+                        {/* Name */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Full Name *
+                           </label>
+                           <input
+                           type="text"
+                           value={formData.name}
+                           onChange={(e) => handleInputChange('name', e.target.value)}
+                           placeholder="Enter your full name"
+                           required
+                           className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                           />
+                        </div>
+                     </div>
+                     </div>
+
+                     {/* Bio */}
+                     <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Bio
+                     </label>
+                     <textarea
+                        value={formData.bio}
+                        onChange={(e) => handleInputChange('bio', e.target.value)}
+                        placeholder="Tell others about yourself, your goals, and what you're passionate about..."
+                        rows={4}
+                        maxLength={500}
+                        className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all resize-none"
+                     />
+                     <p className="text-xs text-gray-500 mt-1">{formData.bio.length}/500 characters</p>
+                     </div>
+
+                     {/* Skills */}
+                     <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Skills
+                     </label>
+                     <div className="space-y-3">
+                        <div className="flex gap-2">
+                           <input
+                           type="text"
+                           value={newSkill}
+                           onChange={(e) => setNewSkill(e.target.value)}
+                           placeholder="Add a skill (e.g., React, Python, UI/UX)"
+                           className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
+                           />
+                           <button
+                           type="button"
+                           onClick={addSkill}
+                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
+                           >
+                           <Plus className="w-4 h-4" />
+                           Add
+                           </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                           {formData.skills.map((skill, index) => (
+                           <span
+                              key={index}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
+                           >
+                              {skill}
+                              <button
+                                 type="button"
+                                 onClick={() => removeSkill(skill)}
+                                 className="hover:bg-blue-200 rounded-full p-0.5"
+                              >
+                                 <X className="w-3 h-3" />
+                              </button>
+                           </span>
+                           ))}
+                        </div>
+                        <p className="text-xs text-gray-500">{formData.skills.length}/20 skills</p>
+                     </div>
+                     </div>
+
+                     {/* Interests */}
+                     <div>
+                     <label className="block text-sm font-medium text-gray-700 mb-3">
+                        Interests
+                     </label>
+                     <div className="space-y-3">
+                        <div className="flex gap-2">
+                           <input
+                           type="text"
+                           value={newInterest}
+                           onChange={(e) => setNewInterest(e.target.value)}
+                           placeholder="Add an interest (e.g., Machine Learning, Web Development)"
+                           className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
+                           />
+                           <button
+                           type="button"
+                           onClick={addInterest}
+                           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-1"
+                           >
+                           <Plus className="w-4 h-4" />
+                           Add
+                           </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                           {formData.interests.map((interest, index) => (
+                           <span
+                              key={index}
+                              className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
+                           >
+                              {interest}
+                              <button
+                                 type="button"
+                                 onClick={() => removeInterest(interest)}
+                                 className="hover:bg-purple-200 rounded-full p-0.5"
+                              >
+                                 <X className="w-3 h-3" />
+                              </button>
+                           </span>
+                           ))}
+                        </div>
+                        <p className="text-xs text-gray-500">{formData.interests.length}/20 interests</p>
+                     </div>
+                     </div>
+
+                     {/* Social Links */}
+                     <div className="space-y-6">
+                     <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
+                     
+                     {/* GitHub */}
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                           GitHub URL
+                        </label>
+                        <div className="relative">
+                           <Github className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                           <input
+                           type="url"
+                           value={formData.githubUrl}
+                           onChange={(e) => handleInputChange('githubUrl', e.target.value)}
+                           placeholder="https://github.com/yourusername"
+                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           />
+                        </div>
+                     </div>
+
+                     {/* LinkedIn */}
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                           LinkedIn URL
+                        </label>
+                        <div className="relative">
+                           <Linkedin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                           <input
+                           type="url"
+                           value={formData.linkedinUrl}
+                           onChange={(e) => handleInputChange('linkedinUrl', e.target.value)}
+                           placeholder="https://linkedin.com/in/yourusername"
+                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           />
+                        </div>
+                     </div>
+
+                     {/* Portfolio */}
+                     <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                           Portfolio URL
+                        </label>
+                        <div className="relative">
+                           <Globe className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                           <input
+                           type="url"
+                           value={formData.portfolioUrl}
+                           onChange={(e) => handleInputChange('portfolioUrl', e.target.value)}
+                           placeholder="https://yourportfolio.com"
+                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                           />
+                        </div>
+                     </div>
+                     </div>
+
+                     {/* Submit Button */}
+                     <div className="flex justify-end pt-6 border-t border-gray-200">
+                     <button
+                        type="submit"
+                        disabled={isLoading}
+                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                     >
+                        {isLoading ? (
+                           <>
+                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                           Saving...
+                           </>
+                        ) : (
+                           <>
+                           <Save className="w-5 h-5" />
+                           Save Changes
+                           </>
+                        )}
+                     </button>
+                     </div>
+                  </form>
+               </div>
+            </div>
+         </div>
+      </div>
+   );
+}

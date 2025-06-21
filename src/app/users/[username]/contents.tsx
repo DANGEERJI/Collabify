@@ -2,13 +2,14 @@
 'use client';
 
 import { useState } from 'react';
-import { Session } from 'next-auth';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Header } from '@/components/layout/AppHeader';
+import { User } from '@prisma/client';
+
 
 import { 
-   User, 
+   User2, 
    Mail, 
    MapPin, 
    Calendar, 
@@ -24,14 +25,13 @@ import {
    GitFork
 } from 'lucide-react';
 import { UserProfileData, ProfileTabData } from '@/types/user-profile';
-import { sessionUserToUser } from '@/types';
 
 interface UserProfileContentProps {
    profileData: UserProfileData;
-   session: Session | null;
+   currentUser: User | null;
 }
 
-export function UserProfileContent({ profileData, session }: UserProfileContentProps) {
+export function UserProfileContent({ profileData, currentUser }: UserProfileContentProps) {
    const { user, stats, projects, isOwnProfile } = profileData;
    const [activeTab, setActiveTab] = useState('created');
 
@@ -63,11 +63,9 @@ export function UserProfileContent({ profileData, session }: UserProfileContentP
       year: 'numeric'
    });
 
-   const sessionUser = session?.user ? sessionUserToUser(session.user) : null;
-
    return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-         <Header user={sessionUser} isDashBoard={false}/>
+         <Header user={currentUser} isDashBoard={false}/>
          <div className="max-w-6xl mx-auto px-4 py-8">
          {/* Profile Header */}
          <div className="bg-white rounded-lg shadow-sm border p-8 mb-8">
@@ -85,7 +83,7 @@ export function UserProfileContent({ profileData, session }: UserProfileContentP
                      />
                   ) : (
                      <div className="w-30 h-30 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                     <User className="w-12 h-12 text-white" />
+                     <User2 className="w-12 h-12 text-white" />
                      </div>
                   )}
                   {isOwnProfile && (
@@ -99,7 +97,7 @@ export function UserProfileContent({ profileData, session }: UserProfileContentP
                <div className="mt-4 flex gap-2">
                   {isOwnProfile ? (
                      <Link
-                     href="/settings/profile"
+                     href="/profile/edit"
                      className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                      >
                      <Settings className="w-4 h-4" />

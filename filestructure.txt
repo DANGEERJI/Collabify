@@ -33,7 +33,13 @@
                └── onboarding
                   └── route.ts
                └── profile
+                  └── edit
+                     └── route.ts
                   └── route.ts
+            └── users
+               └── [username]
+                  └── route.ts
+
       └── project
          └── [id]
             └── edit
@@ -44,18 +50,31 @@
       └── create-project
          └── CreateProjectForm.tsx
          └── page.tsx
+      └── profile
+         └── edit
+            └── page.tsx
+            └── EditProfileForm.tsx
       └── dashboard 
          └── DashboardContent.tsx
          └── page.tsx
       └── oboarding
          └── OnboardingForm.tsx
          └── page.tsx
+      └── users
+         └── [username]
+            └── contents.tsx
+            └── page.tsx
       └── globals.css
       └── layout.tsx
       └── page.tsx
       └── providers.tsx
 
    └── components         # Reusable React components
+      └── layout
+         └── AppHeader.tsx
+      └── ui
+         └── StatusBadge.tsx
+         └── UserAvatar.tsx
 
    └── config
 
@@ -74,6 +93,8 @@
 
    └── types
          └── next-auth.d.ts
+         └── index.ts
+         └── user-profile.ts
 
    └── utils
 

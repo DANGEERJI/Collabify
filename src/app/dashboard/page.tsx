@@ -26,7 +26,9 @@ export default async function DashboardPage() {
          createdAt: true,
          githubUrl: true,
          linkedinUrl: true,
-         portfolioUrl: true
+         portfolioUrl: true,
+         emailVerified: true,
+         updatedAt: true,
       }
    });
 

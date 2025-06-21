@@ -37,7 +37,26 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       notFound();
    }
 
-   const currentUser = session?.user ? sessionUserToUser(session.user as SessionUser) : null;
+   const currentUser = await prisma.user.findUnique({
+      where: { email: session?.user.email! },
+      select: { 
+         id: true,
+         username: true, 
+         name: true,
+         email: true,
+         image: true,
+         bio: true,
+         skills: true,
+         interests: true,
+         createdAt: true,
+         githubUrl: true,
+         linkedinUrl: true,
+         portfolioUrl: true,
+         emailVerified: true,
+         updatedAt: true,
+      }
+   });
+
    const isOwner = currentUser?.id === project.creator.id;
 
    return (

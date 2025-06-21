@@ -5,6 +5,7 @@ import { authOptions } from '@/lib/auth'; // Adjust path as needed
 import { UserProfileContent } from './contents';
 import { UserProfileData } from '@/types/user-profile';
 import { Session } from 'next-auth';
+import { prisma } from "@/lib/prisma"
 
 interface PageProps {
    params: Promise<{
@@ -81,15 +82,35 @@ export default async function UserProfilePage({ params }: PageProps) {
    
    // Get current session
    const session = await getServerSession(authOptions);
-   
+
    // Fetch user profile data
    const profileData = await getUserProfile(username, session);
-   
+
+   const currentUser = await prisma.user.findUnique({
+      where: { email: session?.user.email! },
+      select: { 
+         id: true,
+         username: true, 
+         name: true,
+         email: true,
+         image: true,
+         bio: true,
+         skills: true,
+         interests: true,
+         createdAt: true,
+         githubUrl: true,
+         linkedinUrl: true,
+         portfolioUrl: true,
+         emailVerified: true,
+         updatedAt: true,
+      }
+   });
+
    if (!profileData) {
       notFound();
    }
    
-   return <UserProfileContent profileData={profileData} session={session} />;
+   return <UserProfileContent profileData={profileData} currentUser={currentUser} />;
 }
 
 // Generate static params for popular users (optional optimization)
