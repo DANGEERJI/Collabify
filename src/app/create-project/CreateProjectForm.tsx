@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { TechSkillSelector } from "@/components/ui/TechSkillSelector";
 
 interface FormData {
    title: string;
@@ -26,16 +27,42 @@ export default function CreateProjectForm() {
       estimatedTeamSize: null,
    });
 
-   const [techStackInput, setTechStackInput] = useState("");
+   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+   const [selectedTags, setSeletedTags] = useState<string[]>([]);
    const [tagsInput, setTagsInput] = useState("");
 
+   useEffect(() => {
+      setFormData(prev => ({
+         ...prev,
+         techStack: selectedSkills
+      }));
+   }, [selectedSkills]);
+
+   useEffect(() => {
+      setFormData(prev => ({
+         ...prev,
+         tags: selectedTags
+      }));
+   }, [selectedTags]);
+
    // Common tech stack suggestions
-   const techSuggestions = [
-      "React", "Next.js", "Node.js", "Python", "JavaScript", "TypeScript", 
-      "Java", "C++", "Flutter", "React Native", "Vue.js", "Angular",
-      "Express", "Django", "Flask", "Spring Boot", "MongoDB", "PostgreSQL",
-      "MySQL", "Firebase", "AWS", "Docker", "Kubernetes", "GraphQL"
-   ];
+const techSuggestions= [
+   "JavaScript", "Python", "React", "Next.js", "Node.js", "TypeScript", "Java",
+   "C++", "C#", "HTML/CSS", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin",
+   "Flutter", "React Native", "Vue.js", "Angular", "Express", "Express.js",
+   "Django", "Flask", "Spring Boot", "Laravel", "Ruby on Rails", "ASP.NET",
+   "FastAPI", "MongoDB", "PostgreSQL", "MySQL", "Redis", "Firebase", "AWS",
+   "Azure", "Google Cloud", "Docker", "Kubernetes", "Git", "Linux", "DevOps",
+   "CI/CD", "Machine Learning", "Data Science", "AI", "Deep Learning",
+   "TensorFlow", "PyTorch", "Data Analysis", "Statistics", "R", "Tableau",
+   "Power BI", "UI/UX Design", "Figma", "Adobe XD", "Photoshop", "Illustrator",
+   "Sketch", "Game Development", "Unity", "Unreal Engine", "Blender",
+   "3D Modeling", "Mobile Development", "iOS Development", "Android Development",
+   "Cross-platform", "Backend Development", "Frontend Development",
+   "Full-stack Development", "API Development", "GraphQL", "REST APIs",
+   "Microservices", "Blockchain", "Web3", "Solidity", "Cybersecurity",
+   "Penetration Testing", "Network Security"
+];
 
    // Common project tags
    const tagSuggestions = [
@@ -50,56 +77,6 @@ export default function CreateProjectForm() {
          ...prev,
          [name]: name === "estimatedTeamSize" ? (value ? parseInt(value) : null) : value
       }));
-   };
-
-   const addTechStack = (tech: string) => {
-      const trimmed = tech.trim();
-      if (trimmed && !formData.techStack.includes(trimmed)) {
-         setFormData(prev => ({
-         ...prev,
-         techStack: [...prev.techStack, trimmed]
-         }));
-      }
-   };
-
-   const removeTechStack = (tech: string) => {
-      setFormData(prev => ({
-         ...prev,
-         techStack: prev.techStack.filter(t => t !== tech)
-      }));
-   };
-
-   const addTag = (tag: string) => {
-      const trimmed = tag.trim();
-      if (trimmed && !formData.tags.includes(trimmed)) {
-         setFormData(prev => ({
-         ...prev,
-         tags: [...prev.tags, trimmed]
-         }));
-      }
-   };
-
-   const removeTag = (tag: string) => {
-      setFormData(prev => ({
-         ...prev,
-         tags: prev.tags.filter(t => t !== tag)
-      }));
-   };
-
-   const handleTechStackKeyPress = (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === ",") {
-         e.preventDefault();
-         addTechStack(techStackInput);
-         setTechStackInput("");
-      }
-   };
-
-   const handleTagsKeyPress = (e: React.KeyboardEvent) => {
-      if (e.key === "Enter" || e.key === ",") {
-         e.preventDefault();
-         addTag(tagsInput);
-         setTagsInput("");
-      }
    };
 
    const handleSubmit = async (e: React.FormEvent) => {
@@ -173,51 +150,7 @@ export default function CreateProjectForm() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
                Tech Stack
             </label>
-            <div className="space-y-3">
-               <input
-               type="text"
-               value={techStackInput}
-               onChange={(e) => setTechStackInput(e.target.value)}
-               onKeyDown={handleTechStackKeyPress}
-               placeholder="Add technologies (press Enter or comma to add)..."
-               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-               />
-               
-               {/* Tech Stack Suggestions */}
-               <div className="flex flex-wrap gap-2">
-               {techSuggestions.filter(tech => !formData.techStack.includes(tech)).slice(0, 12).map((tech) => (
-                  <button
-                     key={tech}
-                     type="button"
-                     onClick={() => addTechStack(tech)}
-                     className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-blue-100 hover:text-blue-700 transition-colors"
-                  >
-                     + {tech}
-                  </button>
-               ))}
-               </div>
-
-               {/* Selected Tech Stack */}
-               {formData.techStack.length > 0 && (
-               <div className="flex flex-wrap gap-2">
-                  {formData.techStack.map((tech) => (
-                     <span
-                     key={tech}
-                     className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800"
-                     >
-                     {tech}
-                     <button
-                        type="button"
-                        onClick={() => removeTechStack(tech)}
-                        className="ml-2 text-blue-600 hover:text-blue-800"
-                     >
-                        ×
-                     </button>
-                     </span>
-                  ))}
-               </div>
-               )}
-            </div>
+            <TechSkillSelector currentTags={selectedSkills} setCurrentTags={setSelectedSkills} PREDEFINED_TAGS={techSuggestions}/>
          </div>
 
          {/* Tags */}
@@ -225,51 +158,7 @@ export default function CreateProjectForm() {
             <label className="block text-sm font-medium text-gray-700 mb-2">
                Project Tags
             </label>
-            <div className="space-y-3">
-               <input
-               type="text"
-               value={tagsInput}
-               onChange={(e) => setTagsInput(e.target.value)}
-               onKeyDown={handleTagsKeyPress}
-               placeholder="Add project categories (press Enter or comma to add)..."
-               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
-               />
-               
-               {/* Tag Suggestions */}
-               <div className="flex flex-wrap gap-2">
-               {tagSuggestions.filter(tag => !formData.tags.includes(tag)).slice(0, 8).map((tag) => (
-                  <button
-                     key={tag}
-                     type="button"
-                     onClick={() => addTag(tag)}
-                     className="px-3 py-1 text-sm bg-gray-100 text-gray-700 rounded-full hover:bg-green-100 hover:text-green-700 transition-colors"
-                  >
-                     + {tag}
-                  </button>
-               ))}
-               </div>
-
-               {/* Selected Tags */}
-               {formData.tags.length > 0 && (
-               <div className="flex flex-wrap gap-2">
-                  {formData.tags.map((tag) => (
-                     <span
-                     key={tag}
-                     className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-green-100 text-green-800"
-                     >
-                     {tag}
-                     <button
-                        type="button"
-                        onClick={() => removeTag(tag)}
-                        className="ml-2 text-green-600 hover:text-green-800"
-                     >
-                        ×
-                     </button>
-                     </span>
-                  ))}
-               </div>
-               )}
-            </div>
+            <TechSkillSelector currentTags={selectedTags} setCurrentTags={setSeletedTags} PREDEFINED_TAGS={tagSuggestions}/>
          </div>
 
          {/* GitHub URL */}

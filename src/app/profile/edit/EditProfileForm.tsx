@@ -1,8 +1,7 @@
 // src/app/profile/edit/EditProfileForm.tsx
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import { Header } from '@/components/layout/AppHeader';
 import { User } from '@prisma/client';
@@ -20,13 +19,42 @@ import {
    CheckCircle
 } from 'lucide-react';
 import { useHardRefresh } from '@/hooks/useHardRefresh';
+import { TechSkillSelector } from '@/components/ui/TechSkillSelector';
+
+const PREDEFINED_SKILLS = [
+   "JavaScript", "Python", "React", "Next.js", "Node.js", "TypeScript", "Java",
+   "C++", "C#", "HTML/CSS", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin",
+   "Flutter", "React Native", "Vue.js", "Angular", "Express", "Express.js",
+   "Django", "Flask", "Spring Boot", "Laravel", "Ruby on Rails", "ASP.NET",
+   "FastAPI", "MongoDB", "PostgreSQL", "MySQL", "Redis", "Firebase", "AWS",
+   "Azure", "Google Cloud", "Docker", "Kubernetes", "Git", "Linux", "DevOps",
+   "CI/CD", "Machine Learning", "Data Science", "AI", "Deep Learning",
+   "TensorFlow", "PyTorch", "Data Analysis", "Statistics", "R", "Tableau",
+   "Power BI", "UI/UX Design", "Figma", "Adobe XD", "Photoshop", "Illustrator",
+   "Sketch", "Game Development", "Unity", "Unreal Engine", "Blender",
+   "3D Modeling", "Mobile Development", "iOS Development", "Android Development",
+   "Cross-platform", "Backend Development", "Frontend Development",
+   "Full-stack Development", "API Development", "GraphQL", "REST APIs",
+   "Microservices", "Blockchain", "Web3", "Solidity", "Cybersecurity",
+   "Penetration Testing", "Network Security"
+];
+const PREDEFINED_INTERESTS = [
+   "Open Source", "Startups", "Hackathons", "Freelancing", "Remote Work", "EdTech", "FinTech",
+   "HealthTech", "Climate Tech", "Sustainability", "AI Ethics", "Social Impact", "Blockchain", "Web3",
+   "Cryptocurrency", "Gaming", "Game Design", "Virtual Reality (VR)", "Augmented Reality (AR)", "Cybersecurity", "Quantum Computing",
+   "Space Technology", "Robotics", "Internet of Things (IoT)", "Smart Cities", "Automation", "Product Design", "Entrepreneurship",
+   "Product Management", "Content Creation", "Tech for Good", "Women in Tech", "Digital Art", "Creative Coding", "Music Technology",
+   "Neuroscience", "Behavioral Science", "Psychology in Design", "Data Storytelling", "Digital Nomad Lifestyle", "Minimalism", "Personal Finance",
+   "Self-improvement", "Learning How to Learn", "Public Speaking", "Community Building", "Leadership", "Collaboration", "Personal Branding",
+   "Ethical Hacking", "Augmenting Education", "Research & Development", "AI Alignment", "Future of Work"
+];
+
 
 interface EditProfileFormProps {
    user: User;
 }
 
 export default function EditProfileForm({ user }: EditProfileFormProps) {
-   const router = useRouter();
    const { sessionRefresh } = useHardRefresh();
    const [isLoading, setIsLoading] = useState(false);
    const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -41,46 +69,26 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
       portfolioUrl: user.portfolioUrl || '',
    });
 
-   const [newSkill, setNewSkill] = useState('');
-   const [newInterest, setNewInterest] = useState('');
+   const [currentSkills, setCurrentSkills] = useState<string[]>(formData.skills);
+   const [currentInterests, setCurrentInterests] = useState<string[]>(formData.interests);
 
    const handleInputChange = (field: string, value: string) => {
       setFormData(prev => ({ ...prev, [field]: value }));
    };
 
-   const addSkill = () => {
-      if (newSkill.trim() && !formData.skills.includes(newSkill.trim()) && formData.skills.length < 20) {
-         setFormData(prev => ({
-         ...prev,
-         skills: [...prev.skills, newSkill.trim()]
-         }));
-         setNewSkill('');
-      }
-   };
-
-   const removeSkill = (skillToRemove: string) => {
+   useEffect(() => {
       setFormData(prev => ({
          ...prev,
-         skills: prev.skills.filter(skill => skill !== skillToRemove)
+         skills: currentSkills
       }));
-   };
+   }, [currentSkills]);
 
-   const addInterest = () => {
-      if (newInterest.trim() && !formData.interests.includes(newInterest.trim()) && formData.interests.length < 20) {
-         setFormData(prev => ({
-         ...prev,
-         interests: [...prev.interests, newInterest.trim()]
-         }));
-         setNewInterest('');
-      }
-   };
-
-   const removeInterest = (interestToRemove: string) => {
+   useEffect(() => {
       setFormData(prev => ({
          ...prev,
-         interests: prev.interests.filter(interest => interest !== interestToRemove)
+         interests: currentInterests
       }));
-   };
+   }, [currentInterests]);
 
    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
@@ -242,169 +250,95 @@ export default function EditProfileForm({ user }: EditProfileFormProps) {
 
                      {/* Skills */}
                      <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Skills
-                     </label>
-                     <div className="space-y-3">
-                        <div className="flex gap-2">
-                           <input
-                           type="text"
-                           value={newSkill}
-                           onChange={(e) => setNewSkill(e.target.value)}
-                           placeholder="Add a skill (e.g., React, Python, UI/UX)"
-                           className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addSkill())}
-                           />
-                           <button
-                           type="button"
-                           onClick={addSkill}
-                           className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-1"
-                           >
-                           <Plus className="w-4 h-4" />
-                           Add
-                           </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                           {formData.skills.map((skill, index) => (
-                           <span
-                              key={index}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm"
-                           >
-                              {skill}
-                              <button
-                                 type="button"
-                                 onClick={() => removeSkill(skill)}
-                                 className="hover:bg-blue-200 rounded-full p-0.5"
-                              >
-                                 <X className="w-3 h-3" />
-                              </button>
-                           </span>
-                           ))}
-                        </div>
-                        <p className="text-xs text-gray-500">{formData.skills.length}/20 skills</p>
-                     </div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                           Skills
+                        </label>
+                        <TechSkillSelector currentTags={currentSkills} setCurrentTags={setCurrentSkills} PREDEFINED_TAGS={PREDEFINED_SKILLS}/>
                      </div>
 
                      {/* Interests */}
                      <div>
-                     <label className="block text-sm font-medium text-gray-700 mb-3">
-                        Interests
-                     </label>
-                     <div className="space-y-3">
-                        <div className="flex gap-2">
-                           <input
-                           type="text"
-                           value={newInterest}
-                           onChange={(e) => setNewInterest(e.target.value)}
-                           placeholder="Add an interest (e.g., Machine Learning, Web Development)"
-                           className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addInterest())}
-                           />
-                           <button
-                           type="button"
-                           onClick={addInterest}
-                           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-1"
-                           >
-                           <Plus className="w-4 h-4" />
-                           Add
-                           </button>
-                        </div>
-                        <div className="flex flex-wrap gap-2">
-                           {formData.interests.map((interest, index) => (
-                           <span
-                              key={index}
-                              className="inline-flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-800 rounded-full text-sm"
-                           >
-                              {interest}
-                              <button
-                                 type="button"
-                                 onClick={() => removeInterest(interest)}
-                                 className="hover:bg-purple-200 rounded-full p-0.5"
-                              >
-                                 <X className="w-3 h-3" />
-                              </button>
-                           </span>
-                           ))}
-                        </div>
-                        <p className="text-xs text-gray-500">{formData.interests.length}/20 interests</p>
-                     </div>
+                        <label className="block text-sm font-medium text-gray-700 mb-3">
+                           Interests
+                        </label>
+                        <TechSkillSelector currentTags={currentInterests} setCurrentTags={setCurrentInterests} PREDEFINED_TAGS={PREDEFINED_INTERESTS}/>
                      </div>
 
                      {/* Social Links */}
                      <div className="space-y-6">
-                     <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
-                     
-                     {/* GitHub */}
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                           GitHub URL
-                        </label>
-                        <div className="relative">
-                           <Github className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                           <input
-                           type="url"
-                           value={formData.githubUrl}
-                           onChange={(e) => handleInputChange('githubUrl', e.target.value)}
-                           placeholder="https://github.com/yourusername"
-                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           />
+                        <h3 className="text-lg font-semibold text-gray-900">Social Links</h3>
+                        
+                        {/* GitHub */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                              GitHub URL
+                           </label>
+                           <div className="relative">
+                              <Github className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                              <input
+                              type="url"
+                              value={formData.githubUrl}
+                              onChange={(e) => handleInputChange('githubUrl', e.target.value)}
+                              placeholder="https://github.com/yourusername"
+                              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                           </div>
+                        </div>
+
+                        {/* LinkedIn */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                              LinkedIn URL
+                           </label>
+                           <div className="relative">
+                              <Linkedin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                              <input
+                              type="url"
+                              value={formData.linkedinUrl}
+                              onChange={(e) => handleInputChange('linkedinUrl', e.target.value)}
+                              placeholder="https://linkedin.com/in/yourusername"
+                              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                           </div>
+                        </div>
+
+                        {/* Portfolio */}
+                        <div>
+                           <label className="block text-sm font-medium text-gray-700 mb-2">
+                              Portfolio URL
+                           </label>
+                           <div className="relative">
+                              <Globe className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
+                              <input
+                              type="url"
+                              value={formData.portfolioUrl}
+                              onChange={(e) => handleInputChange('portfolioUrl', e.target.value)}
+                              placeholder="https://yourportfolio.com"
+                              className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                              />
+                           </div>
                         </div>
                      </div>
 
-                     {/* LinkedIn */}
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                           LinkedIn URL
-                        </label>
-                        <div className="relative">
-                           <Linkedin className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                           <input
-                           type="url"
-                           value={formData.linkedinUrl}
-                           onChange={(e) => handleInputChange('linkedinUrl', e.target.value)}
-                           placeholder="https://linkedin.com/in/yourusername"
-                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           />
-                        </div>
-                     </div>
-
-                     {/* Portfolio */}
-                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                           Portfolio URL
-                        </label>
-                        <div className="relative">
-                           <Globe className="absolute left-3 top-3 w-5 h-5 text-gray-400" />
-                           <input
-                           type="url"
-                           value={formData.portfolioUrl}
-                           onChange={(e) => handleInputChange('portfolioUrl', e.target.value)}
-                           placeholder="https://yourportfolio.com"
-                           className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                           />
-                        </div>
-                     </div>
-                     </div>
-
-                     {/* Submit Button */}
+                        {/* Submit Button */}
                      <div className="flex justify-end pt-6 border-t border-gray-200">
-                     <button
-                        type="submit"
-                        disabled={isLoading}
-                        className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                     >
-                        {isLoading ? (
-                           <>
-                           <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                           Saving...
-                           </>
-                        ) : (
-                           <>
-                           <Save className="w-5 h-5" />
-                           Save Changes
-                           </>
-                        )}
-                     </button>
+                        <button
+                           type="submit"
+                           disabled={isLoading}
+                           className="px-8 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg hover:from-blue-700 hover:to-purple-700 transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                           {isLoading ? (
+                              <>
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              Saving...
+                              </>
+                           ) : (
+                              <>
+                              <Save className="w-5 h-5" />
+                              Save Changes
+                              </>
+                           )}
+                        </button>
                      </div>
                   </form>
                </div>

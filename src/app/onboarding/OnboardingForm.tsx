@@ -1,25 +1,27 @@
 // src/app/onboarding/OnboardingForm.tsx
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { TechSkillSelector } from "@/components/ui/TechSkillSelector";
 
 const PREDEFINED_SKILLS = [
-   "JavaScript", "Python", "React", "Node.js", "TypeScript", "Java", "C++", "C#",
-   "HTML/CSS", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin", "Flutter",
-   "React Native", "Vue.js", "Angular", "Next.js", "Express.js", "Django",
-   "Flask", "Spring Boot", "Laravel", "Ruby on Rails", "ASP.NET", "FastAPI",
-   "MongoDB", "PostgreSQL", "MySQL", "Redis", "Firebase", "AWS", "Azure",
-   "Google Cloud", "Docker", "Kubernetes", "Git", "Linux", "DevOps", "CI/CD",
-   "Machine Learning", "Data Science", "AI", "Deep Learning", "TensorFlow",
-   "PyTorch", "Data Analysis", "Statistics", "R", "Tableau", "Power BI",
-   "UI/UX Design", "Figma", "Adobe XD", "Photoshop", "Illustrator", "Sketch",
-   "Game Development", "Unity", "Unreal Engine", "Blender", "3D Modeling",
-   "Mobile Development", "iOS Development", "Android Development", "Cross-platform",
-   "Backend Development", "Frontend Development", "Full-stack Development",
-   "API Development", "GraphQL", "REST APIs", "Microservices", "Blockchain",
-   "Web3", "Solidity", "Cybersecurity", "Penetration Testing", "Network Security"
+   "JavaScript", "Python", "React", "Next.js", "Node.js", "TypeScript", "Java",
+   "C++", "C#", "HTML/CSS", "PHP", "Ruby", "Go", "Rust", "Swift", "Kotlin",
+   "Flutter", "React Native", "Vue.js", "Angular", "Express", "Express.js",
+   "Django", "Flask", "Spring Boot", "Laravel", "Ruby on Rails", "ASP.NET",
+   "FastAPI", "MongoDB", "PostgreSQL", "MySQL", "Redis", "Firebase", "AWS",
+   "Azure", "Google Cloud", "Docker", "Kubernetes", "Git", "Linux", "DevOps",
+   "CI/CD", "Machine Learning", "Data Science", "AI", "Deep Learning",
+   "TensorFlow", "PyTorch", "Data Analysis", "Statistics", "R", "Tableau",
+   "Power BI", "UI/UX Design", "Figma", "Adobe XD", "Photoshop", "Illustrator",
+   "Sketch", "Game Development", "Unity", "Unreal Engine", "Blender",
+   "3D Modeling", "Mobile Development", "iOS Development", "Android Development",
+   "Cross-platform", "Backend Development", "Frontend Development",
+   "Full-stack Development", "API Development", "GraphQL", "REST APIs",
+   "Microservices", "Blockchain", "Web3", "Solidity", "Cybersecurity",
+   "Penetration Testing", "Network Security"
 ];
+
 
 export default function OnboardingForm() {
    const [formData, setFormData] = useState({
@@ -30,13 +32,11 @@ export default function OnboardingForm() {
       portfolioUrl: "",
    });
    const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-   const [customSkill, setCustomSkill] = useState("");
    const [error, setError] = useState("");
    const [isLoading, setIsLoading] = useState(false);
    const [isCheckingUsername, setIsCheckingUsername] = useState(false);
    const [usernameError, setUsernameError] = useState("");
    const { data: session } = useSession();
-   const router = useRouter();
 
    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
       setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -78,26 +78,6 @@ export default function OnboardingForm() {
       if (formData.username) {
          checkUsernameAvailability(formData.username);
       }
-   };
-
-   const toggleSkill = (skill: string) => {
-      setSelectedSkills(prev => 
-         prev.includes(skill) 
-         ? prev.filter(s => s !== skill)
-         : [...prev, skill]
-      );
-   };
-
-   const addCustomSkill = () => {
-      const trimmedSkill = customSkill.trim();
-      if (trimmedSkill && !selectedSkills.includes(trimmedSkill)) {
-         setSelectedSkills([...selectedSkills, trimmedSkill]);
-         setCustomSkill("");
-      }
-   };
-
-   const removeSkill = (skillToRemove: string) => {
-      setSelectedSkills(prev => prev.filter(skill => skill !== skillToRemove));
    };
 
    const handleSubmit = async (e: React.FormEvent) => {
@@ -202,77 +182,10 @@ export default function OnboardingForm() {
 
                {/* Skills Section */}
                <div>
-               <label className="block text-sm font-semibold text-gray-700 mb-4">
-                  Skills <span className="text-gray-400 font-normal">(Optional)</span>
-               </label>
-               
-               {/* Selected Skills */}
-               {selectedSkills.length > 0 && (
-                  <div className="mb-4">
-                     <p className="text-sm text-gray-600 mb-2">Selected Skills ({selectedSkills.length}):</p>
-                     <div className="flex flex-wrap gap-2">
-                     {selectedSkills.map((skill) => (
-                        <span
-                           key={skill}
-                           className="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 border border-blue-200"
-                        >
-                           {skill}
-                           <button
-                           type="button"
-                           onClick={() => removeSkill(skill)}
-                           className="ml-2 text-blue-600 hover:text-blue-800 font-semibold"
-                           >
-                           ×
-                           </button>
-                        </span>
-                     ))}
-                     </div>
-                  </div>
-               )}
-
-               {/* Add Custom Skill */}
-               <div className="mb-4 p-4 bg-gray-50 rounded-lg border">
-                  <p className="text-sm font-medium text-gray-700 mb-2">Add Custom Skill:</p>
-                  <div className="flex gap-2">
-                     <input
-                     type="text"
-                     value={customSkill}
-                     onChange={(e) => setCustomSkill(e.target.value)}
-                     placeholder="Type a skill and click Add"
-                     className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addCustomSkill())}
-                     />
-                     <button
-                     type="button"
-                     onClick={addCustomSkill}
-                     disabled={!customSkill.trim()}
-                     className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                     >
-                     Add
-                     </button>
-                  </div>
-               </div>
-
-               {/* Predefined Skills Grid */}
-               <div className="border border-gray-200 rounded-lg p-4">
-                  <p className="text-sm font-medium text-gray-700 mb-3">Or choose from popular skills:</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-64 overflow-y-auto">
-                     {PREDEFINED_SKILLS.map((skill) => (
-                     <button
-                        key={skill}
-                        type="button"
-                        onClick={() => toggleSkill(skill)}
-                        className={`px-3 py-2 text-sm rounded-lg border transition-all duration-200 text-left ${
-                           selectedSkills.includes(skill)
-                           ? 'bg-blue-600 text-white border-blue-600 shadow-sm'
-                           : 'bg-white text-gray-700 border-gray-300 hover:border-blue-300 hover:bg-blue-50'
-                        }`}
-                     >
-                        {skill}
-                     </button>
-                     ))}
-                  </div>
-               </div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-4">
+                     Skills <span className="text-gray-400 font-normal">(Optional)</span>
+                  </label>
+                  <TechSkillSelector currentTags={selectedSkills} setCurrentTags={setSelectedSkills} PREDEFINED_TAGS={PREDEFINED_SKILLS}/>
                </div>
 
                {/* Bio - Optional */}

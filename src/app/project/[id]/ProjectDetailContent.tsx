@@ -28,7 +28,6 @@ export default function ProjectDetailContent({
   const [interestMessage, setInterestMessage] = useState("");
   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(project.status);
-  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [projects, setProjects] = useState<Project>(project);
 
   const statusOptions = [
@@ -79,27 +78,6 @@ export default function ProjectDetailContent({
     }
   };
 
-  const handleStatusChange = async (newStatus: string) => {
-    if (newStatus === currentStatus) return;
-    
-    setIsUpdatingStatus(true);
-    try {
-      const response = await fetch(`/api/projects/${project.id}/status`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: newStatus })
-      });
-
-      if (response.ok) {
-        setCurrentStatus(newStatus as "active" | "completed" | "on-hold" | "cancelled");
-      }
-    } catch (error) {
-      console.error("Error updating status:", error);
-    } finally {
-      setIsUpdatingStatus(false);
-    }
-  };
-
   const getStatusColor = (status: string) => {
     const statusOption = statusOptions.find(s => s.value === status);
     return statusOption?.color || "bg-gray-100 text-gray-800";
@@ -110,21 +88,35 @@ export default function ProjectDetailContent({
   };
 
   // Handle interest actions (accept/reject)
-  async function handleInterestAction(interestId: string, action: "accepted" | "rejected") {
+  const handleInterestAction = async (interestId: string, action: "accepted" | "rejected") => {
     try {
-      const response = await fetch(`/api/projects/interest/${interestId}`, {
-        method: "PATCH",
+      const response = await fetch(`/api/projects/interest/response`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: action })
+        body: JSON.stringify({ 
+          interestId, 
+          action: action === "accepted" ? "accept" : "reject" 
+        })
       });
 
       if (response.ok) {
+        const result = await response.json();
+        console.log(result.message); // "Interest accepted/rejected successfully"
+        
+        // Reload to show updated data (matching your existing pattern)
         window.location.reload();
+      } else {
+        const error = await response.json();
+        console.error("Error processing application:", error);
+        // Optional: Show user-friendly error message
       }
     } catch (error) {
-      console.error("Error updating interest:", error);
+      console.error("Error handling interest action:", error);
+      // Optional: Show user-friendly error message
     }
-  }
+  };
+
+// Your existing handleExpressInterest is perfect - keep it as is!
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
