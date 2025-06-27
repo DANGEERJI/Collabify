@@ -348,7 +348,7 @@ export function UserProfileContent({ profileData, currentUser }: UserProfileCont
          <div className="flex items-center gap-4 text-sm text-gray-500">
             <div className="flex items-center gap-1">
                <Users className="w-4 h-4" />
-               <span>{project._count?.teamMembers || 0}</span>
+               <span>{project._count?.teamMembers+1 || 0}</span>
             </div>
             <div className="flex items-center gap-1">
                <Heart className="w-4 h-4" />

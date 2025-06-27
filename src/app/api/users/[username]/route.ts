@@ -120,7 +120,8 @@ export async function GET(
       const interestedProjects = user.projectInterests
          .filter(pi => 
             pi.project.creator.id !== user.id && 
-            !user.teamMembers.some(tm => tm.projectId === pi.project.id)
+            !user.teamMembers.some(tm => tm.projectId === pi.project.id) &&
+            pi.status === "pending"
          )
          .map(pi => pi.project);
 

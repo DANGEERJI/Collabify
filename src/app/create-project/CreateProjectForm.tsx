@@ -9,6 +9,8 @@ interface FormData {
    description: string;
    techStack: string[];
    tags: string[];
+   goals: string;
+   requirements: string;
    githubUrl: string;
    estimatedTeamSize: number | null;
 }
@@ -23,13 +25,14 @@ export default function CreateProjectForm() {
       description: "",
       techStack: [],
       tags: [],
+      goals: "",
+      requirements: "",
       githubUrl: "",
       estimatedTeamSize: null,
    });
 
    const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
    const [selectedTags, setSeletedTags] = useState<string[]>([]);
-   const [tagsInput, setTagsInput] = useState("");
 
    useEffect(() => {
       setFormData(prev => ({
@@ -159,6 +162,37 @@ const techSuggestions= [
                Project Tags
             </label>
             <TechSkillSelector currentTags={selectedTags} setCurrentTags={setSeletedTags} PREDEFINED_TAGS={tagSuggestions}/>
+         </div>
+
+         <div>
+            <label htmlFor="goals" className="block text-sm font-semibold text-gray-900 mb-2">
+               Project Goals
+            </label>
+            <textarea
+               id="goals"
+               name="goals"
+               value={formData.goals}
+               onChange={handleInputChange}
+               rows={3}
+               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+               placeholder="What are the main objectives and milestones for this project?"
+            />
+         </div>
+
+         {/* Requirements */}
+         <div>
+            <label htmlFor="requirements" className="block text-sm font-semibold text-gray-900 mb-2">
+               Team Requirements
+            </label>
+            <textarea
+               id="requirements"
+               name="requirements"
+               value={formData.requirements}
+               onChange={handleInputChange}
+               rows={3}
+               className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none"
+               placeholder="What skills, experience, or commitments are you looking for in team members?"
+            />
          </div>
 
          {/* GitHub URL */}

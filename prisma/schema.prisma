@@ -112,8 +112,6 @@ model ProjectInterest {
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   
-  // Prevent duplicate interests from same user for same project
-  @@unique([projectId, userId])
   @@map("project_interests")
 }
 

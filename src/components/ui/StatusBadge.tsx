@@ -1,14 +1,17 @@
-import { Dispatch, SetStateAction, useState } from "react";
+import { useState } from "react";
 import { Project } from "@prisma/client";
 
 interface StatusBadgeProps {
    project: Project;
-   // Make it flexible to handle both single project and array of projects
+   currentUserId: string; // Add current user ID to determine ownership
    onStatusUpdate: (updatedProject: Project) => void;
 }
 
-export const StatusBadge = ({ project, onStatusUpdate }: StatusBadgeProps) => {
+export const StatusBadge = ({ project, currentUserId, onStatusUpdate }: StatusBadgeProps) => {
    const [updatingStatus, setUpdatingStatus] = useState<string | null>(null);
+   
+   // Check if current user is the project owner
+   const isOwner = project.createdBy === currentUserId;
    
    const getStatusColor = (status: string) => {
       switch (status.toLowerCase()) {
@@ -62,7 +65,17 @@ export const StatusBadge = ({ project, onStatusUpdate }: StatusBadgeProps) => {
          setUpdatingStatus(null);
       }
    };
-   
+
+   // If user is not the owner, show read-only status badge
+   if (!isOwner) {
+      return (
+         <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(project.status)}`}>
+            {project.status.charAt(0).toUpperCase() + project.status.slice(1)}
+         </span>
+      );
+   }
+
+   // If user is the owner, show editable dropdown
    return (
       <div className="relative">
          <select

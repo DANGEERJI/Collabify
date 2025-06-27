@@ -16,7 +16,9 @@ export async function POST(req: Request) {
          title, 
          description, 
          techStack, 
-         tags, 
+         tags,
+         goals,
+         requirements,
          githubUrl, 
          estimatedTeamSize 
       } = data;
@@ -62,6 +64,8 @@ export async function POST(req: Request) {
          description: description.trim(),
          techStack: Array.isArray(techStack) ? techStack : [],
          tags: Array.isArray(tags) ? tags : [],
+         goals: goals.trim(),
+         requirements: requirements.trim(),
          githubUrl: githubUrl?.trim() || null,
          estimatedTeamSize: estimatedTeamSize || null,
          createdBy: session.user.id,

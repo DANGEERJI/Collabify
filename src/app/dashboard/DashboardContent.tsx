@@ -215,113 +215,241 @@ export default function DashboardContent({ user }: DashboardContentProps) {
                         + New Project
                         </a>
                      </div>
-
+                     
                      {projectsLoading ? (
                         <div className="space-y-4">
-                           {[1, 2, 3].map((i) => (
-                              <div key={i} className="animate-pulse p-4 border border-gray-200 rounded-lg">
-                                 <div className="flex justify-between items-start mb-3">
-                                    <div className="h-4 bg-gray-200 rounded w-1/3"></div>
-                                    <div className="h-6 bg-gray-200 rounded-full w-16"></div>
-                                 </div>
-                                 <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
-                                 <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
-                                 <div className="h-3 bg-gray-200 rounded w-24"></div>
+                        {[1, 2, 3].map((i) => (
+                           <div key={i} className="animate-pulse p-4 border border-gray-200 rounded-lg">
+                              <div className="flex justify-between items-start mb-3">
+                              <div className="h-4 bg-gray-200 rounded w-1/3"></div>
+                              <div className="h-6 bg-gray-200 rounded-full w-16"></div>
                               </div>
-                           ))}
+                              <div className="h-3 bg-gray-200 rounded w-full mb-2"></div>
+                              <div className="h-3 bg-gray-200 rounded w-2/3 mb-3"></div>
+                              <div className="h-3 bg-gray-200 rounded w-24"></div>
+                           </div>
+                        ))}
                         </div>
                      ) : projectsError ? (
                         <div className="text-center py-8">
-                           <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <span className="text-2xl">⚠️</span>
-                           </div>
-                           <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load Projects</h3>
-                           <p className="text-gray-500 mb-4">{projectsError}</p>
-                           <button
-                              onClick={() => window.location.reload()}
-                              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
-                           >
-                              Try Again
-                           </button>
+                        <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <span className="text-2xl">⚠️</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">Failed to Load Projects</h3>
+                        <p className="text-gray-500 mb-4">{projectsError}</p>
+                        <button
+                           onClick={() => window.location.reload()}
+                           className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+                        >
+                           Try Again
+                        </button>
                         </div>
                      ) : projects.length === 0 ? (
                         <div className="text-center py-12">
-                           <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                              <span className="text-3xl">🚀</span>
-                           </div>
-                           <h3 className="text-lg font-semibold text-gray-900 mb-2">No Projects Yet</h3>
-                           <p className="text-gray-500 mb-6">Start your first project and invite others to collaborate!</p>
-                           <a 
-                              href="/create-project"
-                              className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
-                           >
-                              Create Your First Project
-                           </a>
+                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                           <span className="text-3xl">🚀</span>
+                        </div>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2">No Projects Yet</h3>
+                        <p className="text-gray-500 mb-6">Start your first project and invite others to collaborate!</p>
+                        <a 
+                           href="/create-project"
+                           className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                        >
+                           Create Your First Project
+                        </a>
                         </div>
                      ) : (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {projects.map((project) => (
-                           <div 
-                              key={project.id} 
-                              className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 group cursor-pointer"
-                              onClick={() => handleProjectClick(project.id)}
-                           >
-                              <div className="flex justify-between items-start mb-3">
-                                 <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 flex-1 mr-3">
-                                    {project.title}
-                                 </h4>
-                                 
-                                 {/* Status Dropdown */}
-                                 <div 
-                                    className="relative"
-                                    onClick={(e) => e.stopPropagation()} // Prevent card click when clicking anywhere in this div
-                                 >
-                                    <StatusBadge project={project} onStatusUpdate={(updatedProject) => {
-                                       setProjects(prevProjects => 
-                                          prevProjects.map(p => 
-                                             p.id === updatedProject.id ? updatedProject : p
-                                          )
-                                       );
-                                    }}
-                                    />
-                                 </div>
+                        <div className="space-y-8">
+                        {/* Created Projects Section */}
+                        {projects.filter(project => project.createdBy === user.id).length > 0 && (
+                           <div>
+                              <div className="flex items-center mb-4">
+                                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                    <span className="mr-2">🚀</span>
+                                    Created Projects
+                                 </h3>
+                                 <div className="flex-1 h-px bg-gray-200 ml-4"></div>
+                                 <span className="ml-4 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                    {projects.filter(project => project.createdBy === user.id).length}
+                                 </span>
                               </div>
                               
-                              <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                              {project.description}
-                              </p>
+                              {/* Projects Grid with Horizontal Scroll */}
+                              <div className="relative">
+                                 <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                    <div className="grid grid-flow-col auto-cols-[minmax(280px,1fr)] md:auto-cols-[minmax(320px,1fr)] gap-4" 
+                                          style={{ gridTemplateRows: 'repeat(2, 1fr)' }}>
+                                       {projects.filter(project => project.createdBy === user.id).map((project) => (
+                                       <div 
+                                          key={project.id} 
+                                          className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 group cursor-pointer min-h-[160px]"
+                                          onClick={() => handleProjectClick(project.id)}
+                                       >
+                                          <div className="flex justify-between items-start mb-3">
+                                             <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 flex-1 mr-3">
+                                             {project.title}
+                                             </h4>
+                                             
+                                             {/* Status Dropdown */}
+                                             <div 
+                                             className="relative"
+                                             onClick={(e) => e.stopPropagation()}
+                                             >
+                                                <StatusBadge 
+                                                   currentUserId={user.id} 
+                                                   project={project} 
+                                                   onStatusUpdate={(updatedProject) => {
+                                                      setProjects(prevProjects => 
+                                                      prevProjects.map(p => 
+                                                         p.id === updatedProject.id ? updatedProject : p
+                                                      )
+                                                      );
+                                                   }}
+                                                />
+                                             </div>
+                                          </div>
+                                          
+                                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                                             {project.description}
+                                          </p>
+                                          
+                                          {/* Tech Stack Tags */}
+                                          {project.techStack.length > 0 && (
+                                             <div className="flex flex-wrap gap-1 mb-3">
+                                             {project.techStack.slice(0, 3).map((tech) => (
+                                                <span key={tech} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800">
+                                                   {tech}
+                                                </span>
+                                             ))}
+                                             {project.techStack.length > 3 && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                                                   +{project.techStack.length - 3} more
+                                                </span>
+                                             )}
+                                             </div>
+                                          )}
+                                          
+                                          <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
+                                             <span className="flex items-center">
+                                             <span className="mr-1">📅</span>
+                                             {formatProjectDate(project.createdAt)}
+                                             </span>
+                                             <span className="text-blue-600 group-hover:text-blue-700 font-medium">
+                                             View Details →
+                                             </span>
+                                          </div>
+                                       </div>
+                                       ))}
+                                    </div>
+                                 </div>
                               
-                              {/* Tech Stack Tags */}
-                              {project.techStack.length > 0 && (
-                                 <div className="flex flex-wrap gap-1 mb-3">
-                                    {project.techStack.slice(0, 3).map((tech) => (
-                                       <span key={tech} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-purple-100 text-purple-800">
-                                          {tech}
-                                       </span>
-                                    ))}
-                                    {project.techStack.length > 3 && (
-                                       <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
-                                          +{project.techStack.length - 3} more
-                                       </span>
-                                    )}
+                              {/* Scroll Indicator */}
+                              {projects.filter(project => project.createdBy === user.id).length > 4 && (
+                                 <div className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gradient-to-l from-white via-white to-transparent w-8 h-full pointer-events-none flex items-center justify-end pr-2">
+                                    <div className="text-gray-400 text-sm">→</div>
                                  </div>
                               )}
-                              
-                              <div className="flex items-center justify-between text-xs text-gray-500">
-                                 <span className="flex items-center">
-                                    <span className="mr-1">📅</span>
-                                    {formatProjectDate(project.createdAt)}
-                                 </span>
-                                 <span className="text-blue-600 group-hover:text-blue-700 font-medium">
-                                    View Details →
-                                 </span>
                               </div>
                            </div>
-                        ))}
+                        )}
+
+                        {/* Joined Projects Section */}
+                        {projects.filter(project => project.createdBy !== user.id).length > 0 && (
+                           <div>
+                              <div className="flex items-center mb-4">
+                                 <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                                    <span className="mr-2">🤝</span>
+                                    Joined Projects
+                                 </h3>
+                                 <div className="flex-1 h-px bg-gray-200 ml-4"></div>
+                                 <span className="ml-4 text-sm text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                                    {projects.filter(project => project.createdBy !== user.id).length}
+                                 </span>
+                              </div>
+                              
+                              {/* Projects Grid with Horizontal Scroll */}
+                              <div className="relative">
+                                 <div className="overflow-x-auto pb-4 scrollbar-thin scrollbar-thumb-gray-300 scrollbar-track-gray-100">
+                                    <div className="grid grid-flow-col auto-cols-[minmax(280px,1fr)] md:auto-cols-[minmax(320px,1fr)] gap-4" 
+                                          style={{ gridTemplateRows: 'repeat(2, 1fr)' }}>
+                                       {projects.filter(project => project.createdBy !== user.id).map((project) => (
+                                       <div 
+                                          key={project.id} 
+                                          className="border border-gray-200 rounded-lg p-4 hover:shadow-md hover:border-gray-300 transition-all duration-200 group cursor-pointer min-h-[160px]"
+                                          onClick={() => handleProjectClick(project.id)}
+                                       >
+                                          <div className="flex justify-between items-start mb-3">
+                                             <h4 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors line-clamp-1 flex-1 mr-3">
+                                             {project.title}
+                                             </h4>
+                                             
+                                             {/* Status Dropdown */}
+                                             <div 
+                                             className="relative"
+                                             onClick={(e) => e.stopPropagation()}
+                                             >
+                                                <StatusBadge 
+                                                   currentUserId={user.id} 
+                                                   project={project} 
+                                                   onStatusUpdate={(updatedProject) => {
+                                                      setProjects(prevProjects => 
+                                                      prevProjects.map(p => 
+                                                         p.id === updatedProject.id ? updatedProject : p
+                                                      )
+                                                      );
+                                                   }}
+                                                />
+                                             </div>
+                                          </div>
+                                          
+                                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                                             {project.description}
+                                          </p>
+                                          
+                                          {/* Tech Stack Tags */}
+                                          {project.techStack.length > 0 && (
+                                             <div className="flex flex-wrap gap-1 mb-3">
+                                             {project.techStack.slice(0, 3).map((tech) => (
+                                                <span key={tech} className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-blue-100 text-blue-800">
+                                                   {tech}
+                                                </span>
+                                             ))}
+                                             {project.techStack.length > 3 && (
+                                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-600">
+                                                   +{project.techStack.length - 3} more
+                                                </span>
+                                             )}
+                                             </div>
+                                          )}
+                                          
+                                          <div className="flex items-center justify-between text-xs text-gray-500 mt-auto">
+                                             <span className="flex items-center">
+                                             <span className="mr-1">📅</span>
+                                             {formatProjectDate(project.createdAt)}
+                                             </span>
+                                             <span className="text-blue-600 group-hover:text-blue-700 font-medium">
+                                             View Details →
+                                             </span>
+                                          </div>
+                                       </div>
+                                       ))}
+                                    </div>
+                                 </div>
+                              
+                              {/* Scroll Indicator */}
+                              {projects.filter(project => project.createdBy !== user.id).length > 4 && (
+                                 <div className="absolute right-0 top-1/2 transform -translate-y-1/2 bg-gradient-to-l from-white via-white to-transparent w-8 h-full pointer-events-none flex items-center justify-end pr-2">
+                                    <div className="text-gray-400 text-sm">→</div>
+                                 </div>
+                              )}
+                              </div>
+                           </div>
+                        )}
                         </div>
                      )}
                   </div>
                   )}
+
                   {activeTab === 'teammates' && (
                   <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                      <div className="text-center py-12">

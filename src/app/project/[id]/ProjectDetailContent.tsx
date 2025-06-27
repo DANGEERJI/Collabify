@@ -9,18 +9,21 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { User, Project, ProjectInterest, TeamMember } from "@prisma/client";
 import { ProjectWithDetails } from "@/types";
+import { TeamMemberMenu } from "@/components/ui/TeamMemberMenu";
+import { useRouter } from "next/navigation";
+import { useHardRefresh } from "@/hooks/useHardRefresh";
+import { ErrorModal } from "@/components/ui/ErrorModal";
+import { OctagonMinusIcon } from "lucide-react";
 
 interface ProjectDetailContentProps {
   project: ProjectWithDetails;
   currentUser: User | null;
-  sessionUser: User | null;
   isOwner: boolean;
 }
 
 export default function ProjectDetailContent({ 
   project, 
   currentUser,
-  sessionUser, 
   isOwner 
 }: ProjectDetailContentProps) {
   const [activeTab, setActiveTab] = useState<string>("overview");
@@ -29,6 +32,15 @@ export default function ProjectDetailContent({
   const [isSubmittingInterest, setIsSubmittingInterest] = useState(false);
   const [currentStatus, setCurrentStatus] = useState(project.status);
   const [projects, setProjects] = useState<Project>(project);
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [memberToRemove, setMemberToRemove] = useState<any>(null);
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string>("");
+  const [showErrorModal, setShowErrorModal] = useState(false);
+
+  const router = useRouter();
+  const {sessionRefresh} = useHardRefresh();
 
   const statusOptions = [
     { value: "active", label: "Active", color: "bg-green-100 text-green-800" },
@@ -39,8 +51,10 @@ export default function ProjectDetailContent({
 
   // Check if current user has already expressed interest
   const hasExpressedInterest = project.interests?.some(
-    interest => interest.userId === currentUser?.id
+    interest => interest.userId === currentUser?.id && (interest.status==="pending" || interest.status==="accepted")
   );
+
+  const isUserTeamMember = project.teamMembers.some(members => members.userId === currentUser?.id);
 
   // Get pending interests for owner
   const pendingInterests = project.interests?.filter(
@@ -89,6 +103,12 @@ export default function ProjectDetailContent({
 
   // Handle interest actions (accept/reject)
   const handleInterestAction = async (interestId: string, action: "accepted" | "rejected") => {
+    if(action==="accepted" && (acceptedMembers.length+1) === project.estimatedTeamSize)
+    {
+      setErrorMessage("Estimated Team size exceeded cannot accept. Increase the team limit by edit project panel.");
+      setShowErrorModal(true);
+      return;
+    }
     try {
       const response = await fetch(`/api/projects/interest/response`, {
         method: "POST",
@@ -116,7 +136,107 @@ export default function ProjectDetailContent({
     }
   };
 
-// Your existing handleExpressInterest is perfect - keep it as is!
+
+
+// Function to handle viewing a user's profile
+  const handleViewProfile = (user: any) => {
+    const username = user.username || user.id; // Fallback to ID if username is not available
+    router.push(`/users/${username}`);
+  };
+
+// Function to handle removing a team member
+  const handleRemoveMember = async (memberToRemove: any) => {
+    setIsRemoving(true);
+    const id = project.id;
+    try {
+      const response = await fetch(`/api/projects/${id}/team-members/${memberToRemove.id}`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to remove team member');
+      }
+
+      // Update the local state to remove the member from the UI
+      // You'll need to update your acceptedMembers state
+      // setAcceptedMembers(prev => prev.filter(member => member.id !== memberToRemove.id));
+      
+      // Or if you're using a refresh pattern:
+      // router.refresh();
+      setShowRemoveModal(false);
+      setMemberToRemove(null);
+      await sessionRefresh();
+    } catch (error) {
+      console.error('Error removing team member:', error);
+    } finally {
+      setIsRemoving(false);
+    }
+  };
+
+// Remove Member Confirmation Modal Component
+  const RemoveMemberModal = () => {
+    if (!showRemoveModal || !memberToRemove) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white rounded-xl max-w-md w-full p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 18.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">Remove Team Member</h3>
+              <p className="text-sm text-gray-600">This action cannot be undone</p>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 rounded-lg p-4 mb-6">
+            <div className="flex items-center gap-3">
+              <UserAvatar user={memberToRemove.user} size="sm" />
+              <div>
+                <p className="font-medium text-gray-900">
+                  {memberToRemove.user.name || "Anonymous"}
+                </p>
+                <p className="text-sm text-gray-600">
+                  @{memberToRemove.user.username || "user"}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-gray-600 mb-6">
+            Are you sure you want to remove <strong>{memberToRemove.user.name || "this member"}</strong> from the team? 
+            They will lose access to the project and all team discussions.
+          </p>
+
+          <div className="flex gap-3">
+            <button
+              onClick={() => {
+                setShowRemoveModal(false);
+                setMemberToRemove(null);
+              }}
+              className="flex-1 px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors font-medium"
+              disabled={isRemoving}
+            >
+              Cancel
+            </button>
+            <button
+              onClick={() => handleRemoveMember(memberToRemove)}
+              disabled={isRemoving}
+              className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isRemoving ? 'Removing...' : 'Remove Member'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -138,7 +258,7 @@ export default function ProjectDetailContent({
                 <div className="flex items-center gap-3">
                   {isOwner ? (
                     <div className="relative">
-                      <StatusBadge project={project} onStatusUpdate={(updatedProject) => {
+                      <StatusBadge currentUserId="" project={project} onStatusUpdate={(updatedProject) => {
                         setProjects(updatedProject);
                       }}
                       />
@@ -235,13 +355,22 @@ export default function ProjectDetailContent({
                 </button>
               )}
 
-              {!isOwner && hasExpressedInterest && (
-                <div className="bg-green-100 text-green-800 px-6 py-3 rounded-lg font-medium text-center">
-                  <span className="mr-2">✅</span>
+              {/*Check if User has expressed interest but not in the team yet*/}
+              {!isOwner && hasExpressedInterest && !isUserTeamMember && (
+                <div className="bg-green-500 text-white px-4 py-2 rounded-full font-medium text-sm inline-flex items-center justify-center shadow-md">
+                  <span className="mr-1">✅</span>
                   Interest Expressed
                 </div>
               )}
-              
+
+              {/*Check if User has expressed interest but is in the team*/}
+              {!isOwner && hasExpressedInterest && isUserTeamMember && (
+                <div className="align-middle justify-center bg-blue-600 text-white px-4 py-2 rounded-full font-semibold text-sm inline-flex items-center shadow-lg">
+                  <span className="mr-1 text-xl">🚀</span>
+                  In the Team
+                </div>
+              )}
+
               {project.githubUrl && (
                 <a
                   href={project.githubUrl}
@@ -637,7 +766,8 @@ export default function ProjectDetailContent({
               {/* Team Members Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {/* Project Creator */}
-                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200">
+                <div className="bg-gradient-to-br from-blue-50 to-purple-50 rounded-xl p-6 border-2 border-blue-200 relative">
+                  {/* Creator doesn't get a menu */}
                   <div className="flex items-center gap-4 mb-4">
                     <UserAvatar user={project.creator} size="lg" />
                     <div>
@@ -679,7 +809,31 @@ export default function ProjectDetailContent({
 
                 {/* Team Members */}
                 {acceptedMembers.map((member) => (
-                  <div key={member.id} className="bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-shadow">
+                  <div 
+                    key={member.id} 
+                    className={`bg-white rounded-xl p-6 border border-gray-200 hover:shadow-md transition-all relative ${
+                      openMenuId === member.id ? 'bg-gray-50' : ''
+                    }`}
+                  >
+                    {/* Blur overlay when menu is open */}
+                    {openMenuId === member.id && (
+                      <div className="absolute inset-0 bg-white/10 backdrop-blur-sm rounded-xl z-5" />
+                    )}
+                    
+                    {/* 3-dot menu button */}
+                    <div className="absolute top-4 right-4 z-10">
+                      <TeamMemberMenu
+                        setOpenMenuId={setOpenMenuId}
+                        member={member}
+                        isOwner={isOwner}
+                        onViewProfile={handleViewProfile}
+                        onRemoveMember={(memberToRemove) => {
+                          setMemberToRemove(memberToRemove);
+                          setShowRemoveModal(true);
+                        }}
+                      />
+                    </div>
+
                     <div className="flex items-center gap-4 mb-4">
                       <UserAvatar user={member.user} size="lg" />
                       <div>
@@ -746,6 +900,7 @@ export default function ProjectDetailContent({
                   </div>
                 )}
               </div>
+              <RemoveMemberModal/>
             </div>
           )}
 
@@ -976,6 +1131,10 @@ export default function ProjectDetailContent({
             </div>
           )}
         </div>
+        {/*Error Modal*/}
+        {showErrorModal && (
+          <ErrorModal errorMessage={errorMessage} setErrorMessage={setErrorMessage} showModal={showErrorModal} setShowModal={setShowErrorModal}/> 
+        )}
         {/* Interest Modal */}
         {showInterestModal && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">

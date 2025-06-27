@@ -9,24 +9,106 @@ export async function GET(req: Request) {
    if(!session?.user || !session.user.email) {
       return NextResponse.json({error: "Unauthorized"}, {status: 401});
    }
-
+   
    try {
-      const projects = await prisma.project.findMany({
+      // Fetch projects created by the user
+      const createdProjects = await prisma.project.findMany({
          where: {
             createdBy: session.user.id
+         },
+         include: {
+            creator: {
+               select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true
+               }
+            },
+            teamMembers: {
+               include: {
+                  user: {
+                     select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        image: true
+                     }
+                  }
+               }
+            },
+            _count: {
+               select: {
+                  teamMembers: true,
+                  discussions: true
+               }
+            }
          },
          orderBy: {
             createdAt: 'desc'
          }
       });
 
-      if(!projects) {
-         return NextResponse.json({error: "Couldnt find any project"}, {status: 404});
-      }
+      // Fetch projects where user is a team member
+      const memberProjects = await prisma.project.findMany({
+         where: {
+            teamMembers: {
+               some: {
+                  userId: session.user.id
+               }
+            },
+            // Exclude projects where user is the creator (to avoid duplicates)
+            NOT: {
+               createdBy: session.user.id
+            }
+         },
+         include: {
+            creator: {
+               select: {
+                  id: true,
+                  name: true,
+                  email: true,
+                  image: true
+               }
+            },
+            teamMembers: {
+               include: {
+                  user: {
+                     select: {
+                        id: true,
+                        name: true,
+                        email: true,
+                        image: true
+                     }
+                  }
+               }
+            },
+            _count: {
+               select: {
+                  teamMembers: true,
+                  discussions: true
+               }
+            }
+         },
+         orderBy: {
+            createdAt: 'desc'
+         }
+      });
+
+      // Combine both arrays
+      const allProjects = [...createdProjects, ...memberProjects];
+
+      // Sort combined array by createdAt descending
+      allProjects.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
       return NextResponse.json({
          success: true, 
-         projects,
-         count: projects.length
+         projects: allProjects,
+         count: allProjects.length,
+         breakdown: {
+            created: createdProjects.length,
+            member: memberProjects.length
+         }
       });
    } catch (error) {
       console.error("Error fetching projects: ", error);
@@ -34,5 +116,5 @@ export async function GET(req: Request) {
          {error: "Failed to fetch projects"}, 
          {status: 500}
       );
-   };
-};
+   }
+}
